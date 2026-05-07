@@ -463,9 +463,13 @@ html:not([data-ready]) .split-char { opacity: 0; }
   font-size: clamp(16px, 1.58vw, 23px);
   font-weight: 400;
   line-height: 1;
-  color: var(--ink);
+  color: var(--accent);          /* electric-blue brand voice in default state */
   text-decoration: none;
   white-space: nowrap;
+}
+.site-nav__descriptor,
+.site-nav__lang {
+  color: var(--accent);
 }
 
 /* ─── Word-mask hover (Awwwards-style) ───────────────────────────

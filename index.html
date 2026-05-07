@@ -12,7 +12,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/lucide@latest"></script>
 
-  <link rel="stylesheet" href="style.css?v=20260508-3">
+  <link rel="stylesheet" href="style.css?v=20260508-4">
 
   <script>
     // Reset scroll BEFORE first paint — disables browser auto-restore so the
@@ -110,7 +110,9 @@
       color: #EFEAE2;
     }
     body[data-hero-active="true"] .site-nav__wordmark {
-      filter: invert(1);
+      /* SVG fills are accent blue; brightness(0) flattens to black,
+         invert(1) flips to white — no yellow cast from inverting blue. */
+      filter: brightness(0) invert(1);
     }
     /* Force nav expanded during hero — overrides any data-scrolled state. */
     body[data-hero-active="true"] .site-nav__descriptor,

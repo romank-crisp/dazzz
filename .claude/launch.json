@@ -2,10 +2,11 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "dzz",
-      "runtimeExecutable": "/opt/homebrew/bin/python3.13",
-      "runtimeArgs": ["-m", "http.server", "5173", "--directory", "/Users/roman/Documents/Dev/03-dzz"],
-      "port": 5173
+      "name": "dev-server",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "python3 -m http.server $PORT"],
+      "port": 8000,
+      "autoPort": true
     }
   ]
 }
