@@ -145,8 +145,12 @@
     });
   }
 
-  /* Measure nav height → --nav-h on root. heroIntro uses it for height calc. */
+  /* Measure nav height → --nav-h on root.
+     Skip while nav is compact: --nav-h should always reflect the expanded
+     reference, so heroIntro's negative margin-top stays stable when the
+     nav transitions between compact and expanded (no layout jumps). */
   function syncNavHeight(nav) {
+    if (nav.dataset.scrolled === 'true') return;
     const h = nav.offsetHeight;
     document.documentElement.style.setProperty('--nav-h', h + 'px');
   }
@@ -390,28 +394,31 @@
   function afterHero() {
     if (lenis) lenis.start();
 
-    const intro = document.getElementById('heroIntro');
-    if (!intro) {
+    const intro    = document.getElementById('heroIntro');
+    const galleryPin = document.querySelector('.gallery__pin');
+
+    if (!('IntersectionObserver' in window)) {
       document.body.dataset.heroActive = 'false';
       return;
     }
 
-    // Watch how much of heroIntro is in the viewport. While > 50% visible,
-    // body[data-hero-active="true"] — nav uses dark theme.
-    if ('IntersectionObserver' in window) {
-      const obs = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            const active = entry.intersectionRatio > 0.5;
-            document.body.dataset.heroActive = active ? 'true' : 'false';
-          });
-        },
-        { threshold: [0, 0.25, 0.5, 0.75, 1] }
-      );
-      obs.observe(intro);
-    } else {
-      document.body.dataset.heroActive = 'false';
-    }
+    // Track every "dark" section in a Set. While any is >50% visible,
+    // body[data-hero-active="true"] — nav switches to white text.
+    const darkSections = new Set();
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.intersectionRatio > 0.5) darkSections.add(entry.target);
+          else                               darkSections.delete(entry.target);
+        });
+        document.body.dataset.heroActive = darkSections.size > 0 ? 'true' : 'false';
+      },
+      { threshold: [0, 0.25, 0.5, 0.75, 1] }
+    );
+
+    if (intro)       obs.observe(intro);
+    if (galleryPin) obs.observe(galleryPin);
+    if (!intro && !galleryPin) document.body.dataset.heroActive = 'false';
   }
 
   /* ── 5. Section animations (synopsis, gallery, etc.) ────────────────── */
@@ -493,14 +500,20 @@
         }
       };
 
-      /* Opening text panel */
-      const textPanel = rail.querySelector('.gallery__panel--text');
+      /* Opening text panel — HIGHLIGHTS title reveal */
+      const textPanel = rail.querySelector('.gallery__panel--hl');
       if (textPanel) {
-        const eyebrow   = textPanel.querySelector('.caps');
-        const heading   = textPanel.querySelector('.mega-h2');
-        const lead      = textPanel.querySelector('.lead-sm');
-        const headWords = heading ? splitWords(heading) : [];
-        const leadWords = lead    ? splitWords(lead)    : [];
+        const mark      = textPanel.querySelector('.hl-mark');
+        const titleEl   = textPanel.querySelector('.hl-title');
+        const rule      = textPanel.querySelector('.hl-rule');
+        const caption   = textPanel.querySelector('.hl-caption');
+        const titleWords = titleEl ? splitWords(titleEl) : [];
+
+        // Initial state set immediately so there's no flash before reveal.
+        if (mark)             gsap.set(mark,        { scaleX: 0, transformOrigin: 'left center' });
+        if (titleWords.length) gsap.set(titleWords, { yPercent: 100, opacity: 0 });
+        if (rule)             gsap.set(rule,        { scaleX: 0, transformOrigin: 'left center' });
+        if (caption)          gsap.set(caption,     { y: 16, opacity: 0 });
 
         const triggerEl = pinTween ? pinSection : textPanel;
         ScrollTrigger.create({
@@ -509,14 +522,10 @@
           once: true,
           onEnter() {
             const tl = gsap.timeline({ defaults: { ease: 'expo.out' } });
-            if (eyebrow)            tl.from(eyebrow,   { y: 16, opacity: 0, duration: 0.5 }, 0);
-            if (headWords.length)   tl.from(headWords, { yPercent: 100, opacity: 0, stagger: 0.045, duration: 0.85 }, 0.08);
-            if (leadWords.length) {
-              const lines = lineGroups(leadWords);
-              lines.forEach((lw, i) => {
-                tl.from(lw, { y: 20, opacity: 0, duration: 0.7, stagger: 0.012 }, 0.38 + i * 0.09);
-              });
-            }
+            if (mark)              tl.to(mark,        { scaleX: 1, duration: 0.7 }, 0);
+            if (titleWords.length) tl.to(titleWords,  { yPercent: 0, opacity: 1, stagger: 0.06, duration: 1.0 }, 0.15);
+            if (rule)              tl.to(rule,        { scaleX: 1, duration: 1.1, ease: 'power3.out' }, 0.35);
+            if (caption)           tl.to(caption,     { y: 0, opacity: 1, duration: 0.6 }, 0.6);
           },
         });
       }
@@ -629,12 +638,93 @@
     requestAnimationFrame(tick);
   }
 
+  /* ── Footer mark — per-letter slide-in on hover ─────────────────────────
+     Inline-fetch the horizontal wordmark SVG so each <path> (one per letter)
+     becomes individually targetable. Letters are pushed outward from the
+     wordmark's center at rest (so the mark visibly bleeds off-canvas) and
+     gsap-staggered back to translateX:0 on hover.
+     Bails silently if GSAP missing or fetch fails — the static <img>
+     fallback continues to display the wordmark. */
+  async function runFooterMark() {
+    const wrap = document.querySelector('[data-footer-mark]');
+    if (!wrap || !has.gsap) return;
+    const img = wrap.querySelector('img');
+    if (!img) return;
+
+    let svg;
+    try {
+      const res = await fetch(img.getAttribute('src'));
+      if (!res.ok) return;
+      const text = await res.text();
+      const parsed = new DOMParser().parseFromString(text, 'image/svg+xml');
+      svg = parsed.querySelector('svg');
+      if (!svg) return;
+    } catch {
+      return;
+    }
+
+    svg.setAttribute('aria-hidden', 'true');
+    wrap.replaceChild(svg, img);
+
+    const paths = Array.from(svg.querySelectorAll('path'));
+    if (!paths.length) return;
+
+    // Wait one frame so getBBox returns valid numbers (SVG must be in DOM).
+    await new Promise((r) => requestAnimationFrame(r));
+
+    // Reference: SVG viewBox center.
+    const vb = svg.viewBox.baseVal;
+    const cx = vb.x + vb.width / 2;
+
+    // Stagger value: how far each letter is pushed outward from center.
+    // Multiplier amplifies the natural offset — 0.55 means a letter at the
+    // far edge of the wordmark gets pushed an extra 55% of its distance.
+    const SPREAD = 0.55;
+    paths.forEach((path) => {
+      let pcx;
+      try {
+        const bb = path.getBBox();
+        pcx = bb.x + bb.width / 2;
+      } catch {
+        pcx = cx; // fallback — no offset
+      }
+      const dx = (pcx - cx) * SPREAD;
+      gsap.set(path, { x: dx });
+      path.dataset.restX = String(dx);
+    });
+
+    // Hover timeline: collapse the spread back to 0 with center-out stagger.
+    const tl = gsap.timeline({ paused: true });
+    tl.to(paths, {
+      x: 0,
+      duration: 0.9,
+      ease: 'expo.out',
+      stagger: { from: 'center', amount: 0.45 },
+    });
+
+    // Hover targets the whole footer so the user doesn't need to land on the
+    // wordmark itself (which is pointer-events: none anyway).
+    const footer = wrap.closest('.footer') || wrap;
+    let isOver = false;
+    footer.addEventListener('mouseenter', () => {
+      if (isOver) return;
+      isOver = true;
+      tl.play();
+    });
+    footer.addEventListener('mouseleave', () => {
+      if (!isOver) return;
+      isOver = false;
+      tl.reverse();
+    });
+  }
+
   /* ── Init — run phases in order ─────────────────────────────────────── */
   function init() {
     bootstrap();
     runCursor();
     runNavBehavior();
     runSections();
+    runFooterMark();
     runHeroIntro().then(afterHero);
   }
 

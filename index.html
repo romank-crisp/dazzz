@@ -12,7 +12,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/lucide@latest"></script>
 
-  <link rel="stylesheet" href="style.css?v=20260507-9">
+  <link rel="stylesheet" href="style.css?v=20260508-2">
 
   <script>
     // Reset scroll BEFORE first paint — disables browser auto-restore so the
@@ -124,6 +124,53 @@
     @media (max-width: 860px) {
       .hi-mega { white-space: normal; }
       .hi-title-rule { display: none; }
+    }
+
+    /* ── Highlights — opening title panel ──────────────────────────────── */
+    .gallery__panel--hl {
+      background: #000;
+      align-items: stretch;          /* override inherited center alignment */
+      justify-content: space-between;
+      flex-direction: column;
+      padding: clamp(48px, 5vw, 80px) clamp(40px, 6vw, 96px);
+    }
+    .gallery__panel--hl > * { max-width: none; width: auto; }
+
+    .gallery__panel--hl .hl-mark {
+      display: block;
+      width: clamp(48px, 4vw, 64px);
+      height: 0;
+      border-top: 1px solid rgba(239, 234, 226, 0.7);
+    }
+    .gallery__panel--hl .hl-title-row {
+      display: flex;
+      align-items: center;
+      gap: clamp(40px, 5vw, 80px);
+      flex: 1 1 auto;
+    }
+    /* Layout-only overrides — typography comes from .mega-h1. */
+    .gallery__panel--hl .hl-title {
+      flex: 0 0 auto;
+      white-space: nowrap;
+      margin: 0;
+    }
+    .gallery__panel--hl .hl-rule {
+      flex: 1 1 0;
+      height: 0;
+      border-top: 1px solid rgba(239, 234, 226, 0.7);
+    }
+    .gallery__panel--hl .hl-caption {
+      font-family: "Instrument Sans", sans-serif;
+      font-size: clamp(13px, 1vw, 16px);
+      line-height: 1.4;
+      color: rgba(239, 234, 226, 0.55);
+      margin: 0;
+      max-width: 280px;
+    }
+    @media (max-width: 860px) {
+      .gallery__panel--hl .hl-title { font-size: clamp(56px, 14vw, 80px); }
+      .gallery__panel--hl .hl-title-row { flex-direction: column; align-items: flex-start; gap: 1.5rem; }
+      .gallery__panel--hl .hl-rule { width: 100%; flex: 0 0 auto; }
     }
   </style>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -264,14 +311,14 @@
       <div class="gallery__pin" data-pin>
         <div class="gallery__rail">
 
-          <!-- Opening title panel -->
-          <div class="gallery__panel gallery__panel--text">
-            <span class="caps">Highlights · 04</span>
-            <h3 class="mega-h2">The night in <em>numbers</em>.</h3>
-            <p class="lead-sm">
-              Six months of rehearsals, one double-sided stage, a ton and
-              a half of fresh flowers — production at a glance. Scroll horizontally.
-            </p>
+          <!-- Opening title panel — full-bleed black, large serif HIGHLIGHTS -->
+          <div class="gallery__panel gallery__panel--text gallery__panel--hl" data-theme="ink">
+            <span class="hl-mark" aria-hidden="true"></span>
+            <div class="hl-title-row">
+              <h3 class="mega-h1 hl-title">Highlights</h3>
+              <span class="hl-rule" aria-hidden="true"></span>
+            </div>
+            <p class="hl-caption">minutes of original music<br>created on the basis of</p>
           </div>
 
           <!-- 01 — gala interior, chandeliers, hall in candlelight -->
@@ -415,6 +462,55 @@
     <!-- "D" mark      → Pass 4 -->
   </main>
 
+  <!-- ============================================================
+       FOOTER — cobalt accent. Three-row structure:
+        1) hairline rule
+        2) tagline + addresses + social links (3 columns)
+        3) Off-canvas DAZZZ UNIVERSE wordmark — letters slide back into
+           place on hover (per-letter GSAP).
+       ============================================================ -->
+  <footer class="footer" aria-label="Site footer">
+    <div class="footer__inner">
+      <div class="footer__rule" aria-hidden="true"></div>
+
+      <div class="footer__row">
+        <!-- col 1 — tagline + CTA -->
+        <div class="footer__col footer__col--lead">
+          <p class="footer__tagline">Brands inspire&nbsp;us, we inspire&nbsp;brands</p>
+          <a class="footer__cta" href="#">Schedule a call</a>
+        </div>
+
+        <!-- col 2 — addresses -->
+        <address class="footer__col footer__col--addresses">
+          <div class="footer__address">
+            <span class="footer__city">DUBAI</span>
+            <span class="footer__addr-line">Unit 301-F, IFZA Properties, Dubai Digital Park, Building A2, Dubai Silicon Oasis</span>
+          </div>
+          <div class="footer__address">
+            <span class="footer__city">KAZAKHSTAN</span>
+            <span class="footer__addr-line">Almaty, Medeu District, Abay Ave, 23</span>
+          </div>
+          <a class="footer__email" href="mailto:welcome@dazzzuniverse.com">WELCOME@DAZZZUNIVERSE.COM</a>
+        </address>
+
+        <!-- col 3 — social -->
+        <ul class="footer__col footer__col--social">
+          <li><a class="footer__social-link" href="#">Instagram</a></li>
+          <li><a class="footer__social-link" href="#">Linked In</a></li>
+          <li><a class="footer__social-link" href="#">Vimeo</a></li>
+        </ul>
+      </div>
+
+      <!-- Off-canvas brand mark — JS lands per-letter on hover -->
+      <div class="footer__mark" data-footer-mark>
+        <img class="footer__mark-img"
+             src="assets/dazzz-wordmark-horizontal.svg"
+             alt="DAZZZ UNIVERSE"
+             aria-hidden="true">
+      </div>
+    </div>
+  </footer>
+
   <!-- GSAP core + plugins (sync, run in order). -->
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
@@ -422,6 +518,6 @@
   <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"></script>
 
   <!-- main.js is a classic script: deterministic order after CDN scripts above. -->
-  <script src="main.js?v=20260508-1"></script>
+  <script src="main.js?v=20260508-2"></script>
 </body>
 </html>
