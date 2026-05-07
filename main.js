@@ -36,10 +36,22 @@ if (window.Lenis && window.gsap) {
   gsap.ticker.add((time) => lenis.raf(time * 1000));
   gsap.ticker.lagSmoothing(0);
 
-  // Block scroll until hero intro animation finishes
+  // Block scroll during hero intro; scroll heroIntro away once unlocked
   if (document.getElementById('heroIntro')) {
     lenis.stop();
-    document.addEventListener('heroIntroComplete', () => lenis.start(), { once: true });
+    document.addEventListener('heroIntroComplete', () => {
+      lenis.start();
+      const scrollAway = ({ scroll }) => {
+        const intro = document.getElementById('heroIntro');
+        if (!intro) { lenis.off('scroll', scrollAway); return; }
+        gsap.set(intro, { y: -scroll });
+        if (scroll >= window.innerHeight) {
+          intro.remove();
+          lenis.off('scroll', scrollAway);
+        }
+      };
+      lenis.on('scroll', scrollAway);
+    }, { once: true });
   }
 }
 
@@ -595,7 +607,7 @@ const ctx  = (window.gsap && page) ? gsap.context(() => {
     link.dataset.maskDone = '1';
   });
 
-  // Compact-on-scroll. Threshold ~80px feels right for a 66px-padded header.
+  // Compact-on-scroll. Reverts to expanded 1 s after scroll stops.
   const THRESHOLD = 80;
   let isCompact = false;
   const setCompact = (next) => {
@@ -604,10 +616,23 @@ const ctx  = (window.gsap && page) ? gsap.context(() => {
     nav.dataset.scrolled = next ? 'true' : 'false';
   };
 
+  // Initialize nav expanded (not compact)
+  setCompact(false);
+
+  let navInactivityTimer;
+  const handleScroll = (scroll) => {
+    if (document.getElementById('heroIntro')) return; // frozen during intro
+    setCompact(scroll > THRESHOLD);
+    clearTimeout(navInactivityTimer);
+    if (scroll > THRESHOLD) {
+      navInactivityTimer = setTimeout(() => setCompact(false), 1000);
+    }
+  };
+
   if (lenis) {
-    lenis.on('scroll', ({ scroll }) => setCompact(scroll > THRESHOLD));
+    lenis.on('scroll', ({ scroll }) => handleScroll(scroll));
   } else {
-    const onScroll = () => setCompact(window.scrollY > THRESHOLD);
+    const onScroll = () => handleScroll(window.scrollY);
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
   }

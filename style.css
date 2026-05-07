@@ -437,8 +437,6 @@ html:not([data-ready]) .split-char { opacity: 0; }
   overflow: hidden;
   line-height: 1.15;            /* host descenders ("g", "p") */
   height: 1.15em;               /* clip to a single row — the mask */
-  padding: 0 0.06em;            /* slack for italic letter slant */
-  margin:  0 -0.06em;
   vertical-align: bottom;
 }
 .nav-word__inner {
@@ -453,20 +451,21 @@ html:not([data-ready]) .split-char { opacity: 0; }
   align-items: center;
   height: 1.15em;
   line-height: 1.15;
-  gap: 0.3em;
+  gap: 0.2em;
 }
 .nav-word__icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 0.9em;
-  height: 0.9em;
+  width: 0.8em;
+  height: 0.8em;
   flex-shrink: 0;
 }
 .nav-word__icon svg {
   width: 100%;
   height: 100%;
   stroke-width: 2.5;
+  color: inherit;
 }
 .nav-word__row--alt {
   /* Identical to resting row — just different vertical position */

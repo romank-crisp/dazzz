@@ -108,12 +108,11 @@
       z-index: 1;
     }
 
-    /* Each photo card — width/height fixed; GSAP controls everything else */
+    /* Each photo card — width capped; height follows natural proportions */
     .hero__card {
       position: absolute;
-      width:  320px;
-      height: 440px;
-      border-radius: 32px;
+      width: clamp(200px, 22vw, 320px);
+      border-radius: 4px;
       overflow: hidden;
       box-shadow: 0 40px 120px rgba(0, 0, 0, 0.50),
                   0  8px  28px rgba(0, 0, 0, 0.28);
@@ -122,8 +121,7 @@
     .hero__card img,
     .hero__card video {
       width: 100%;
-      height: 100%;
-      object-fit: cover;
+      height: auto;
       display: block;
       pointer-events: none;
       user-select: none;
@@ -157,7 +155,7 @@
     .hero__text {
       position: absolute;
       inset: auto var(--gutter) clamp(48px, 5.2vw, 76px);
-      z-index: 12;
+      z-index: 15;
       opacity: 0;  /* shown by JS at the right moment */
     }
 
@@ -365,12 +363,14 @@
     // The card lives at the flex-center origin. CSS transform scale() expands
     // outward from transformOrigin: center center, which is the viewport center.
     // overflow: hidden on .hero clips any bleed. No width/height animation needed.
-    const CARD_W    = 320;
-    const CARD_H    = 440;
-    const fillScale = Math.max(
-      window.innerWidth  / CARD_W,
-      window.innerHeight / CARD_H
-    ) * 1.02;   // 2 % overshoot → zero hairline gap at any aspect ratio
+    // fillScale is evaluated when the expansion tween starts — by then the
+    // video metadata has loaded (≥1.6 s of card animations before expansion).
+    const fillScale = () => {
+      const r = lastCard.getBoundingClientRect();
+      const w = r.width  || 320;
+      const h = r.height || 440;
+      return Math.max(window.innerWidth / w, window.innerHeight / h) * 1.02;
+    };
 
     /* ── Master timeline ──────────────────────────────────────────────────── */
     const tl = gsap.timeline({
@@ -384,8 +384,8 @@
         scale:    1,
         opacity:  1,
         rotation: gsap.utils.random(-5, 5),
-        x:        gsap.utils.random(-15, 15),
-        y:        gsap.utils.random(-15, 15),
+        x:        gsap.utils.random(-50, 50),
+        y:        gsap.utils.random(-50, 50),
         duration: 1.1,
       }, i * 0.13);
     });

@@ -13,6 +13,106 @@
   <script src="https://cdn.jsdelivr.net/npm/lucide@latest"></script>
 
   <link rel="stylesheet" href="style.css?v=20260507-9">
+
+  <style>
+    /* ── Hero intro — full height section, scrolls away naturally */
+    #heroIntro {
+      position: relative;
+      height: 100vh;
+      background: #050505;
+      overflow: hidden;
+    }
+    @supports (height: 100svh) {
+      #heroIntro { height: 100svh; }
+    }
+    .hi-stack {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .hi-card {
+      position: absolute;
+      width: clamp(200px, 22vw, 320px);
+      border-radius: 4px;
+      overflow: hidden;
+      box-shadow: 0 40px 120px rgba(0,0,0,.5), 0 8px 28px rgba(0,0,0,.28);
+      will-change: transform, opacity;
+    }
+    .hi-card img, .hi-card video {
+      width: 100%; height: auto; display: block;
+      pointer-events: none; user-select: none;
+    }
+    .hi-overlay {
+      position: absolute; inset: 0; z-index: 8;
+      pointer-events: none; opacity: 0;
+    }
+    .hi-overlay-flat {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,.26);
+    }
+    .hi-overlay-grad {
+      position: absolute; inset: 0;
+      background: linear-gradient(to bottom, transparent 18%, rgba(0,0,0,.06) 55%, rgba(0,0,0,.8) 100%);
+    }
+    .hi-text {
+      position: absolute;
+      inset: auto var(--gutter, 41px) clamp(48px,5.2vw,76px);
+      z-index: 15; opacity: 0;
+      font-family: "Instrument Sans", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .hi-title-row {
+      display: flex; align-items: center;
+      gap: clamp(16px,2vw,28px);
+    }
+    .hi-title-rule {
+      flex: 1; height: 0;
+      border-top: 1px solid rgba(239,234,226,.45);
+    }
+    .hi-mega {
+      font-family: "Instrument Serif", serif;
+      font-size: clamp(44px,6.2vw,96px);
+      font-weight: 400; line-height: 1.03;
+      letter-spacing: -.03em; text-transform: uppercase;
+      color: #EFEAE2; margin: 0; white-space: nowrap;
+    }
+    .hi-mega em { font-style: italic; }
+    .hi-sw { display: inline-block; will-change: transform, opacity; }
+    .hi-grain {
+      position: absolute; inset: 0; z-index: 20;
+      pointer-events: none; opacity: .08;
+      mix-blend-mode: soft-light;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+      background-size: 200px;
+    }
+    /* Nav: transparent + white while heroIntro exists in DOM */
+    body:has(#heroIntro) .site-nav {
+      background: transparent !important;
+    }
+    body:has(#heroIntro) .site-nav__link,
+    body:has(#heroIntro) .site-nav__descriptor span,
+    body:has(#heroIntro) .site-nav__lang a {
+      color: #EFEAE2 !important;
+    }
+    body:has(#heroIntro) .site-nav__wordmark {
+      filter: invert(1) !important;
+    }
+    /* Keep nav fully expanded during intro (never compact) */
+    body:has(#heroIntro) .site-nav[data-scrolled="true"] .site-nav__descriptor,
+    body:has(#heroIntro) .site-nav[data-scrolled="true"] .site-nav__group,
+    body:has(#heroIntro) .site-nav[data-scrolled="true"] .site-nav__lang {
+      opacity: 1 !important;
+      transform: none !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+    }
+    @media (max-width: 860px) {
+      .hi-mega { white-space: normal; }
+      .hi-title-rule { display: none; }
+    }
+  </style>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
@@ -56,52 +156,23 @@
 
   <main id="page">
 
-    <!-- ============================================================
-         HERO
-         Full-bleed image (Unsplash placeholder — Pashkov-adjacent
-         marble interior). Title overlaps the bottom of the frame
-         and breaks into the synopsis. Corner metadata in small caps.
-         ============================================================ -->
-    <header class="hero" data-theme="ink">
-      <figure class="hero__media" data-reveal="mask">
-        <!-- VCA · Bolshoi — hero plate -->
-        <img
-          src="assets/img/cases/vca-bolshoi/vca-4.png"
-          alt="Pashkov House interior, opening tableau"
-          fetchpriority="high"
-          decoding="async">
-      </figure>
-
-    </header>
-
-    <!-- ============================================================
-         INTRO — Figma node 49:25
-         "En Coulisse — Immersive / Unique Experience and Concept"
-         editorial title + 2-col body. Title is Instrument Serif uppercase.
-         ============================================================ -->
-    <section class="intro" aria-label="About the project">
-      <div class="intro__title-row">
-        <h1 class="mega-h1">En Coulisse</h1>
-        <span class="intro__title-rule" aria-hidden="true"></span>
-        <p class="mega-h1">Immersive</p>
+    <!-- ── Hero intro — full-height section, scrolls away after animation -->
+    <div id="heroIntro" aria-hidden="true">
+      <div class="hi-stack" id="hiStack"></div>
+      <div class="hi-overlay" id="hiOverlay">
+        <div class="hi-overlay-flat"></div>
+        <div class="hi-overlay-grad"></div>
       </div>
-      <p class="mega-h1">unique experience and concept</p>
-
-      <div class="intro__row">
-        <div class="intro__col intro__col--left">
-          <span class="caps caps--solid">About the project</span>
+      <div class="hi-text" id="hiText">
+        <div class="hi-title-row">
+          <h2 class="hi-mega" id="hiT1">En Coulisse</h2>
+          <span class="hi-title-rule" aria-hidden="true"></span>
+          <p class="hi-mega" id="hiT2"><em>Immersive</em></p>
         </div>
-        <div class="intro__col intro__col--right">
-          <div class="intro__body">
-            <p class="text">
-              <span class="intro__indent">For the 245<sup>th</sup> season of the Bolshoi Theater, <em>Van Cleef &amp; Arpels</em> presented the premiere of the ballet-opera Zephyr and Flora, or Metamorphoses.</span>
-            </p>
-            <p class="text">In 1817, the ballet Zephyr and Flora was staged at the Pashkov House, and 204 years later it was rethought and performed on the stage of the Pashkov House by the famous soloists of the Bolshoi Theater.</p>
-            <p class="text">Our Event Bureau team ensured the full-scale organization and seamless execution of the evening: from staging original ballet and opera performances to managing the 360° gala dinner production.</p>
-          </div>
-        </div>
+        <p class="hi-mega" id="hiT3">unique experience and concept</p>
       </div>
-    </section>
+      <div class="hi-grain" aria-hidden="true"></div>
+    </div>
 
     <!-- ============================================================
          SYNOPSIS — 2-col: description (sans, large) / credentials table
@@ -284,6 +355,105 @@
   <!-- SplitText is a club plugin; we'll fall back to a manual splitter in main.js if it 404s. -->
   <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"></script>
 
-  <script src="main.js?v=20260507-7" type="module"></script>
+  <script src="main.js?v=20260507-8" type="module"></script>
+
+  <script>
+  /* ── Hero intro animation ─────────────────────────────────────── */
+  (function () {
+    const IMGS = [
+      'assets/img/cases/vca-bolshoi/thumb/vca-1.png',
+      'assets/img/cases/vca-bolshoi/thumb/vca-2.png',
+      'assets/img/cases/vca-bolshoi/thumb/vca-3.png',
+      'assets/img/cases/vca-bolshoi/thumb/vca-4.png',
+      'assets/img/cases/vca-bolshoi/thumb/vca-5.png',
+      'assets/img/cases/vca-bolshoi/thumb/vca-6.png',
+      'assets/img/cases/vca-bolshoi/thumb/vca-7.png',
+      'assets/img/cases/vca-bolshoi/thumb/vca-8.png',
+      'assets/img/cases/vca-bolshoi/thumb/vca-9.png',
+      'assets/img/cases/vca-bolshoi/thumb/vca-10.png',
+      'assets/img/cases/vca-bolshoi/thumb/vca-11.png',
+      'assets/img/cases/vca-bolshoi/thumb/vca-12.png',
+    ];
+    const VIDEO_SRC = 'assets/video/vca-bolshoi-hero.mp4';
+
+    function splitWords(el) {
+      const out = [];
+      const walk = node => [...node.childNodes].forEach(child => {
+        if (child.nodeType === Node.TEXT_NODE) {
+          const frag = document.createDocumentFragment();
+          child.nodeValue.split(/(\s+)/).forEach(p => {
+            if (!p) return;
+            if (/^\s+$/.test(p)) { frag.appendChild(document.createTextNode(p)); return; }
+            const s = Object.assign(document.createElement('span'), { className: 'hi-sw', textContent: p });
+            frag.appendChild(s); out.push(s);
+          });
+          node.replaceChild(frag, child);
+        } else if (child.nodeType === Node.ELEMENT_NODE) { walk(child); }
+      });
+      walk(el); return out;
+    }
+
+    const stackEl = document.getElementById('hiStack');
+
+    IMGS.forEach((src, i) => {
+      const card = document.createElement('div');
+      card.className = 'hi-card'; card.style.zIndex = i + 1;
+      const img = Object.assign(document.createElement('img'), { src, alt: '', draggable: false });
+      card.appendChild(img); stackEl.appendChild(card);
+    });
+
+    const videoCard = document.createElement('div');
+    videoCard.className = 'hi-card'; videoCard.style.zIndex = IMGS.length + 1;
+    const vid = document.createElement('video');
+    Object.assign(vid, { src: VIDEO_SRC, autoplay: true, muted: true, loop: true, playsInline: true });
+    vid.setAttribute('playsinline', '');
+    videoCard.appendChild(vid); stackEl.appendChild(videoCard);
+
+    const cards    = gsap.utils.toArray('.hi-card');
+    const lastCard = cards[cards.length - 1];
+
+    gsap.set(cards, {
+      scale: 0.04, opacity: 0,
+      rotation: () => gsap.utils.random(-12, 12),
+      x: () => gsap.utils.random(-40, 40),
+      y: () => gsap.utils.random(-30, 30),
+      transformOrigin: 'center center', force3D: true,
+    });
+
+    const words = ['hiT1','hiT2','hiT3'].flatMap(id => splitWords(document.getElementById(id)));
+    gsap.set(words, { y: 44, opacity: 0, rotation: 3, force3D: true });
+
+    const fillScale = () => {
+      const r = lastCard.getBoundingClientRect();
+      return Math.max(window.innerWidth / (r.width || 320), window.innerHeight / (r.height || 440)) * 1.02;
+    };
+
+    const tl = gsap.timeline({
+      delay: 0.35,
+      defaults: { ease: 'power4.out', force3D: true },
+    });
+
+    cards.forEach((card, i) => {
+      tl.to(card, {
+        scale: 1, opacity: 1,
+        rotation: gsap.utils.random(-5, 5),
+        x: gsap.utils.random(-50, 50),
+        y: gsap.utils.random(-50, 50),
+        duration: 1.1,
+      }, i * 0.13);
+    });
+
+    tl.to(lastCard, { scale: fillScale, x: 0, y: 0, rotation: 0, borderRadius: 0, duration: 1.8, ease: 'expo.inOut' }, '>-0.1');
+    tl.to('#hiOverlay',  { opacity: 1, duration: 1.2 }, '-=1.2');
+    tl.set('#hiText',    { opacity: 1 }, '-=1.0');
+    tl.to(words, { y: 0, opacity: 1, rotation: 0, duration: 1.0, ease: 'power3.out', stagger: { each: 0.05, from: 'start' } }, '<');
+
+    /* Hold, then unlock scroll — overlay stays and scrolls away naturally */
+    tl.add(() => {
+      document.getElementById('heroIntro').classList.add('is-done');
+      document.dispatchEvent(new CustomEvent('heroIntroComplete'));
+    }, '+=0.8');
+  }());
+  </script>
 </body>
 </html>
