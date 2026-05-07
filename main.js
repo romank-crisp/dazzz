@@ -160,6 +160,12 @@
     const nav = document.querySelector('.site-nav');
     if (!nav) return;
 
+    // ── DEBUG ──────────────────────────────────────────────────────────────
+    // Hide the nav while iterating on lower sections. Set true to hide.
+    const SKIP_NAV = false;
+    if (SKIP_NAV) { nav.style.display = 'none'; return; }
+    // ───────────────────────────────────────────────────────────────────────
+
     // Initial measurement + on every resize. ResizeObserver also catches
     // the height change when the nav transitions between expanded/compact.
     syncNavHeight(nav);
@@ -207,31 +213,121 @@
       link.dataset.maskDone = '1';
     });
 
-    /* Compact-on-scroll. Reverts to expanded 1 s after scroll inactivity. */
-    const THRESHOLD = 80;
-    let isCompact = null; // null forces first setCompact() call to write the attr
-    let inactivityTimer = null;
+    /* ── Compact / expanded state machine ────────────────────────────────
+       Goal: deterministic, smooth, user-intent-driven. Three layers
+       eliminate jitter from Lenis frame-easing:
 
-    const setCompact = (next) => {
-      if (next === isCompact) return;
-      isCompact = next;
-      nav.dataset.scrolled = next ? 'true' : 'false';
+         · NOISE_PX     sub-pixel dy (bounce / momentum tail) is ignored
+         · UP_DELTA     60 px cumulative upward scroll required to expand
+         · COOLDOWN_MS  minimum interval between state flips. If a flip
+                        is requested during cooldown, the desired state
+                        is buffered and applied (or cancelled if intent
+                        reverts) when the cooldown ends.
+
+       Triggers:
+         expand   when scrollY < THRESHOLD              (at top)
+                  when accumulated up-scroll ≥ UP_DELTA  (scroll-up)
+         compact  when scrolling DOWN past THRESHOLD
+
+       Hero entrance (data-hero-active="true") locks state to expanded. */
+    const THRESHOLD   = 80;
+    const UP_DELTA    = 60;
+    const NOISE_PX    = 0.5;
+    const COOLDOWN_MS = 380;     // ≈ longest CSS nav transition (0.4 s)
+
+    let lastY        = 0;
+    let upAccum      = 0;
+    let state        = null;     // applied state
+    let pendingState = null;     // desired state buffered during cooldown
+    let lastChangeAt = -Infinity;
+    let pendingTimer = null;
+
+    const applyState = (next) => {
+      if (next === state) return;
+      state = next;
+      lastChangeAt = performance.now();
+      nav.dataset.scrolled = (next === 'compact') ? 'true' : 'false';
     };
 
-    // Explicit init — nav is always expanded on first paint.
-    setCompact(false);
-
-    const onScrollUpdate = (scrollY) => {
-      // Frozen during hero intro — body[data-hero-active="true"] keeps
-      // the nav in its dark theme; compact state is irrelevant.
-      if (document.body.dataset.heroActive === 'true') return;
-      setCompact(scrollY > THRESHOLD);
-
-      // Schedule auto-expand 1 s after the last scroll event.
-      clearTimeout(inactivityTimer);
-      if (scrollY > THRESHOLD) {
-        inactivityTimer = setTimeout(() => setCompact(false), 1000);
+    const setState = (next) => {
+      // Already at desired state → cancel any pending opposite flip.
+      if (next === state) {
+        if (pendingTimer) { clearTimeout(pendingTimer); pendingTimer = null; }
+        pendingState = null;
+        return;
       }
+      // Outside cooldown → apply immediately.
+      const wait = (lastChangeAt + COOLDOWN_MS) - performance.now();
+      if (wait <= 0) {
+        applyState(next);
+        return;
+      }
+      // Inside cooldown → buffer the latest desired state for later.
+      pendingState = next;
+      if (pendingTimer) return;
+      pendingTimer = setTimeout(() => {
+        pendingTimer = null;
+        const target = pendingState;
+        pendingState = null;
+        if (target && target !== state) applyState(target);
+      }, wait);
+    };
+
+    applyState('expanded');
+
+    /* ── Theme probe ─────────────────────────────────────────────────────
+       Sample the element directly under the nav (centre x, navBottom + 1px),
+       walk up to the nearest [data-theme]. If "ink" → dark; otherwise light.
+       Runs on every scroll/resize and reacts to per-panel theme changes
+       inside pinned horizontal scrolls (the gallery's --hl panel).        */
+    let lastTheme = null;
+    const setTheme = (next) => {
+      if (next === lastTheme) return;
+      lastTheme = next;
+      document.body.dataset.navTheme = next;
+    };
+
+    const probeTheme = () => {
+      const probeY = nav.getBoundingClientRect().bottom + 1;
+      const probeX = window.innerWidth / 2;
+      const els = document.elementsFromPoint(probeX, probeY);
+      let theme = 'light';
+      for (const el of els) {
+        const themed = el.closest && el.closest('[data-theme]');
+        if (themed) {
+          theme = themed.dataset.theme === 'ink' ? 'dark' : 'light';
+          break;
+        }
+      }
+      setTheme(theme);
+    };
+
+    /* ── Scroll handler ──────────────────────────────────────────────── */
+    const onScrollUpdate = (scrollY) => {
+      const dy = scrollY - lastY;
+      lastY = scrollY;
+
+      // Hero entrance: always expanded, no compact transitions.
+      if (document.body.dataset.heroActive === 'true') {
+        setState('expanded');
+        upAccum = 0;
+      } else if (scrollY < THRESHOLD) {
+        // At top: forced expanded.
+        setState('expanded');
+        upAccum = 0;
+      } else if (Math.abs(dy) < NOISE_PX) {
+        // Sub-pixel bounce / momentum tail — ignore for state, not for theme.
+      } else if (dy > 0) {
+        // Scrolling DOWN past threshold → compact, reset up-accumulator.
+        upAccum = 0;
+        setState('compact');
+      } else {
+        // Scrolling UP → accumulate. Past UP_DELTA, expand.
+        upAccum += -dy;
+        if (upAccum >= UP_DELTA) setState('expanded');
+      }
+
+      probeTheme();
     };
 
     if (lenis) {
@@ -239,12 +335,35 @@
     } else {
       window.addEventListener('scroll', () => onScrollUpdate(window.scrollY), { passive: true });
     }
+
+    // Re-probe on resize and when hero-active flips (entrance starts/ends).
+    window.addEventListener('resize', probeTheme, { passive: true });
+    if ('MutationObserver' in window) {
+      new MutationObserver(probeTheme).observe(document.body, {
+        attributes: true,
+        attributeFilter: ['data-hero-active'],
+      });
+    }
+
+    // Initial probe so first paint matches what's under the nav.
+    probeTheme();
   }
 
   /* ── 3. Hero intro animation ───────────────────────────────────────── */
   function runHeroIntro() {
     const intro = document.getElementById('heroIntro');
     if (!intro || !has.gsap) return Promise.resolve();
+
+    // ── DEBUG SHORT-CIRCUIT ────────────────────────────────────────────
+    // Skip the full hero collage/expansion animation so the page is
+    // immediately interactive while iterating on later sections. Set
+    // SKIP_HERO_INTRO = false to restore the production intro.
+    const SKIP_HERO_INTRO = false;
+    if (SKIP_HERO_INTRO) {
+      intro.style.display = 'none';
+      document.body.dataset.heroActive = 'false';
+      return Promise.resolve();
+    }
 
     // Mark page in "hero" theme — flips nav to dark/transparent variant.
     document.body.dataset.heroActive = 'true';
@@ -336,12 +455,13 @@
     gsap.set(words, { y: 44, opacity: 0, rotation: 3, force3D: true });
 
     // fillScale is evaluated at tween-start time so the video card has
-    // its natural rendered dimensions.
+    // its natural rendered dimensions. Final size = cover-fit × 1.95
+    // (1.5 × 1.3 — scaled up 30% from the prior 1.5 ceiling).
     const fillScale = () => {
       const r = lastCard.getBoundingClientRect();
       const w = r.width  || 320;
       const h = r.height || 440;
-      return Math.max(window.innerWidth / w, window.innerHeight / h) * 1.02;
+      return Math.max(window.innerWidth / w, window.innerHeight / h) * 1.02 * 1.95;
     };
 
     return new Promise((resolve) => {
@@ -351,14 +471,16 @@
         onComplete: resolve,
       });
 
-      // 1 — Cards appear with organic micro-scatter
+      // 1 — Cards appear stacked at center (x: 0). All deterministic, no
+      //     randomness — every card lands at viewport center; the video
+      //     card is the final layer that expands.
       cards.forEach((card, i) => {
         tl.to(card, {
           scale:    1,
           opacity:  1,
-          rotation: gsap.utils.random(-5, 5),
-          x:        gsap.utils.random(-50, 50),
-          y:        gsap.utils.random(-50, 50),
+          rotation: 0,
+          x:        0,
+          y:        0,
           duration: 1.1,
         }, i * 0.13);
       });
@@ -390,35 +512,13 @@
     });
   }
 
-  /* ── 4. After hero — unlock scroll, switch theme on intersection ────── */
+  /* ── 4. After hero — unlock scroll, drop the entrance lock ──────────────
+     Theme detection is owned by the probe in runNavBehavior(); this only
+     needs to release the entrance-state lock so compact-on-scroll resumes.
+     The MutationObserver in runNavBehavior re-probes on this attribute flip. */
   function afterHero() {
     if (lenis) lenis.start();
-
-    const intro    = document.getElementById('heroIntro');
-    const galleryPin = document.querySelector('.gallery__pin');
-
-    if (!('IntersectionObserver' in window)) {
-      document.body.dataset.heroActive = 'false';
-      return;
-    }
-
-    // Track every "dark" section in a Set. While any is >50% visible,
-    // body[data-hero-active="true"] — nav switches to white text.
-    const darkSections = new Set();
-    const obs = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.intersectionRatio > 0.5) darkSections.add(entry.target);
-          else                               darkSections.delete(entry.target);
-        });
-        document.body.dataset.heroActive = darkSections.size > 0 ? 'true' : 'false';
-      },
-      { threshold: [0, 0.25, 0.5, 0.75, 1] }
-    );
-
-    if (intro)       obs.observe(intro);
-    if (galleryPin) obs.observe(galleryPin);
-    if (!intro && !galleryPin) document.body.dataset.heroActive = 'false';
+    document.body.dataset.heroActive = 'false';
   }
 
   /* ── 5. Section animations (synopsis, gallery, etc.) ────────────────── */
@@ -429,6 +529,30 @@
     if (!page) return;
 
     return gsap.context(() => {
+      /* VIDEO BLEED — cinematic shutter reveal + slow settle ───────── */
+      document.querySelectorAll('[data-video-bleed]').forEach((section) => {
+        const media = section.querySelector('.video-bleed__media');
+        if (!media || !has.scrollTrigger) return;
+
+        // Closed letterbox + slight scale-up at rest.
+        gsap.set(media, { clipPath: 'inset(50% 0 50% 0)', scale: 1.06 });
+
+        ScrollTrigger.create({
+          trigger: section,
+          start: 'top 75%',
+          once: true,
+          onEnter() {
+            const tl = gsap.timeline({ defaults: { ease: 'expo.out' } });
+            tl.to(media, { clipPath: 'inset(0% 0 0% 0)', duration: 1.4 }, 0)
+              .to(media, { scale: 1, duration: 2.0, ease: 'power3.out' }, 0);
+
+            // Best-effort play in case autoplay was blocked until user interaction.
+            const v = media;
+            if (v.paused && v.tagName === 'VIDEO') v.play().catch(() => {});
+          },
+        });
+      });
+
       /* SYNOPSIS — lead by lines + table rows ──────────────────────── */
       const synLead = document.querySelector('.synopsis .lead');
       const synRows = document.querySelectorAll('.synopsis__row');
@@ -460,6 +584,44 @@
           scrollTrigger: { trigger: '.synopsis__table', start: 'top 85%', once: true },
         });
       }
+
+      /* METHOD — text rows + image reveals ────────────────────────── */
+      document.querySelectorAll('[data-method-text]').forEach((row) => {
+        const label   = row.querySelector('.method__label');
+        const content = row.querySelector('.method__inline');
+        if (!label || !content || !has.scrollTrigger) return;
+
+        gsap.set(label,   { opacity: 0 });
+        gsap.set(content, { y: 20, opacity: 0 });
+
+        ScrollTrigger.create({
+          trigger: row,
+          start: 'top 82%',
+          once: true,
+          onEnter() {
+            gsap.to(label,   { opacity: 1, duration: 0.55, ease: 'expo.out' });
+            gsap.to(content, { y: 0, opacity: 1, duration: 0.75, ease: 'expo.out', delay: 0.08 });
+          },
+        });
+      });
+
+      document.querySelectorAll('[data-method-images] .method__img').forEach((fig, i) => {
+        const img = fig.querySelector('img');
+        if (!img || !has.scrollTrigger) return;
+
+        gsap.set(fig, { clipPath: 'inset(0 100% 0 0)' });
+        gsap.set(img, { scale: 1.06 });
+
+        ScrollTrigger.create({
+          trigger: fig,
+          start: 'top 88%',
+          once: true,
+          onEnter() {
+            gsap.to(fig, { clipPath: 'inset(0 0% 0 0)', duration: 0.9, ease: 'power2.inOut', delay: i * 0.08 });
+            gsap.to(img, { scale: 1, duration: 1.4, ease: 'power3.out', delay: i * 0.08 });
+          },
+        });
+      });
 
       /* GALLERY — pinned horizontal scroll + per-panel reveals ──────── */
       const pinSection = document.querySelector('[data-pin]');
@@ -518,7 +680,7 @@
         const triggerEl = pinTween ? pinSection : textPanel;
         ScrollTrigger.create({
           trigger: triggerEl,
-          start: 'top 80%',
+          start: 'top top',
           once: true,
           onEnter() {
             const tl = gsap.timeline({ defaults: { ease: 'expo.out' } });
@@ -665,56 +827,341 @@
 
     svg.setAttribute('aria-hidden', 'true');
     wrap.replaceChild(svg, img);
+    // Hover animation removed — wordmark stays at its 150vw default size.
+  }
 
-    const paths = Array.from(svg.querySelectorAll('path'));
-    if (!paths.length) return;
+  /* ── Related projects — pinned horizontal scroll + pointer parallax ─────
+     Mirrors the gallery pin pattern: ScrollTrigger pins the section and
+     tweens the rail's translateX from 0 → -(rail width − viewport).
+     Each card additionally listens for pointer movement and shifts its
+     bg image opposite to the cursor — a small parallax depth effect.
+     The accent overlay tint is pure CSS (mix-blend-mode: multiply). */
+  function runRelated() {
+    const section = document.querySelector('[data-pin-related]');
+    const rail = section?.querySelector('.related__rail');
+    if (!section || !rail || !has.scrollTrigger) return;
 
-    // Wait one frame so getBBox returns valid numbers (SVG must be in DOM).
-    await new Promise((r) => requestAnimationFrame(r));
+    const isWide = window.matchMedia('(min-width: 900px)').matches;
+    if (isWide) {
+      const distance = () => Math.max(0, rail.scrollWidth - window.innerWidth);
+      gsap.to(rail, {
+        x: () => -distance(),
+        ease: 'none',
+        scrollTrigger: {
+          trigger: section,
+          start: 'top top',
+          end: () => '+=' + distance(),
+          pin: true,
+          scrub: 0.6,
+          invalidateOnRefresh: true,
+          anticipatePin: 1,
+        },
+      });
+    }
 
-    // Reference: SVG viewBox center.
-    const vb = svg.viewBox.baseVal;
-    const cx = vb.x + vb.width / 2;
+    // Pointer parallax — each card shifts its image opposite to the
+    // pointer's position inside the card. Subtle (max ±14px) so it's
+    // felt rather than seen. Skipped under reduced-motion.
+    if (reduced) return;
+    section.querySelectorAll('[data-related-card]').forEach((card) => {
+      const img = card.querySelector('.related__card-img');
+      if (!img) return;
+      const MAX = 14;
+      let raf = 0;
+      let tx = 0, ty = 0, cx = 0, cy = 0;
+      const tick = () => {
+        cx += (tx - cx) * 0.12;
+        cy += (ty - cy) * 0.12;
+        img.style.transform = `translate3d(${cx}px, ${cy}px, 0) scale(${card.matches(':hover') ? 1.08 : 1})`;
+        if (Math.abs(tx - cx) > 0.05 || Math.abs(ty - cy) > 0.05) {
+          raf = requestAnimationFrame(tick);
+        } else {
+          raf = 0;
+        }
+      };
+      const onMove = (e) => {
+        const r = card.getBoundingClientRect();
+        const nx = ((e.clientX - r.left) / r.width  - 0.5) * -2; // -1..1, inverted
+        const ny = ((e.clientY - r.top)  / r.height - 0.5) * -2;
+        tx = nx * MAX;
+        ty = ny * MAX;
+        if (!raf) raf = requestAnimationFrame(tick);
+      };
+      const onLeave = () => {
+        tx = 0; ty = 0;
+        if (!raf) raf = requestAnimationFrame(tick);
+      };
+      card.addEventListener('mousemove', onMove);
+      card.addEventListener('mouseleave', onLeave);
+    });
 
-    // Stagger value: how far each letter is pushed outward from center.
-    // Multiplier amplifies the natural offset — 0.55 means a letter at the
-    // far edge of the wordmark gets pushed an extra 55% of its distance.
-    const SPREAD = 0.55;
-    paths.forEach((path) => {
-      let pcx;
-      try {
-        const bb = path.getBBox();
-        pcx = bb.x + bb.width / 2;
-      } catch {
-        pcx = cx; // fallback — no offset
+    // WebGL hover crossfade for cards that declare a hover image.
+    section.querySelectorAll('[data-hover-img]').forEach(initWebGLHover);
+  }
+
+  /* ── WebGL hover crossfade ─────────────────────────────────────────────
+     For a card with [data-default-img] + [data-hover-img], overlay a canvas
+     that renders both textures via a fragment shader. On hover, animate a
+     `progress` uniform 0→1 with GSAP — the shader warps and crossfades the
+     two images for a "liquid" reveal. Falls back to the CSS bg image if
+     WebGL is unavailable or images fail to load. */
+  function initWebGLHover(card) {
+    const defaultUrl = card.dataset.defaultImg;
+    const hoverUrl   = card.dataset.hoverImg;
+    if (!defaultUrl || !hoverUrl || !window.gsap) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.className = 'related__card-canvas';
+    const cssImg = card.querySelector('.related__card-img');
+    card.insertBefore(canvas, cssImg ? cssImg.nextSibling : card.firstChild);
+
+    const gl = canvas.getContext('webgl', { premultipliedAlpha: false, antialias: true });
+    if (!gl) return;                       // graceful fallback: CSS bg shows through
+
+    const VERT = `
+      attribute vec2 a_pos;
+      varying vec2 v_uv;
+      void main() {
+        v_uv = a_pos * 0.5 + 0.5;
+        v_uv.y = 1.0 - v_uv.y;
+        gl_Position = vec4(a_pos, 0.0, 1.0);
+      }`;
+    const FRAG = `
+      precision mediump float;
+      uniform sampler2D u_tex0;
+      uniform sampler2D u_tex1;
+      uniform float u_progress;
+      uniform vec2 u_res0;
+      uniform vec2 u_res1;
+      uniform vec2 u_size;
+      varying vec2 v_uv;
+
+      // cover-fit a texture into the quad
+      vec2 coverUV(vec2 uv, vec2 texRes, vec2 boxRes) {
+        float texAR = texRes.x / texRes.y;
+        float boxAR = boxRes.x / boxRes.y;
+        vec2 scale = (texAR > boxAR)
+          ? vec2(boxAR / texAR, 1.0)
+          : vec2(1.0, texAR / boxAR);
+        return (uv - 0.5) * scale + 0.5;
       }
-      const dx = (pcx - cx) * SPREAD;
-      gsap.set(path, { x: dx });
-      path.dataset.restX = String(dx);
+
+      void main() {
+        // Smooth bell-curve displacement amplitude — peaks mid-transition.
+        float amp = sin(u_progress * 3.14159) * 0.06;
+        vec2 dir = vec2(0.0, 1.0);
+        vec2 d0 =  dir * amp * (1.0 - u_progress);
+        vec2 d1 = -dir * amp * u_progress;
+
+        vec2 uv0 = coverUV(v_uv + d0, u_res0, u_size);
+        vec2 uv1 = coverUV(v_uv + d1, u_res1, u_size);
+
+        vec4 c0 = texture2D(u_tex0, uv0);
+        vec4 c1 = texture2D(u_tex1, uv1);
+        // Slightly eased blend
+        float t = smoothstep(0.0, 1.0, u_progress);
+        gl_FragColor = mix(c0, c1, t);
+      }`;
+
+    const compile = (type, src) => {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+        console.warn('shader fail:', gl.getShaderInfoLog(s));
+        return null;
+      }
+      return s;
+    };
+    const vs = compile(gl.VERTEX_SHADER, VERT);
+    const fs = compile(gl.FRAGMENT_SHADER, FRAG);
+    if (!vs || !fs) return;
+    const prog = gl.createProgram();
+    gl.attachShader(prog, vs);
+    gl.attachShader(prog, fs);
+    gl.linkProgram(prog);
+    gl.useProgram(prog);
+
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+    const posLoc = gl.getAttribLocation(prog, 'a_pos');
+    gl.enableVertexAttribArray(posLoc);
+    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+    const uTex0 = gl.getUniformLocation(prog, 'u_tex0');
+    const uTex1 = gl.getUniformLocation(prog, 'u_tex1');
+    const uProg = gl.getUniformLocation(prog, 'u_progress');
+    const uRes0 = gl.getUniformLocation(prog, 'u_res0');
+    const uRes1 = gl.getUniformLocation(prog, 'u_res1');
+    const uSize = gl.getUniformLocation(prog, 'u_size');
+
+    const makeTex = (img, unit) => {
+      gl.activeTexture(gl.TEXTURE0 + unit);
+      const tex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+      return tex;
+    };
+
+    let tex0Res = [1, 1], tex1Res = [1, 1];
+    let ready = 0;
+    const state = { progress: 0 };
+
+    const resize = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = card.clientWidth, h = card.clientHeight;
+      canvas.width  = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      gl.viewport(0, 0, canvas.width, canvas.height);
+    };
+    const render = () => {
+      if (ready < 2) return;
+      gl.uniform1i(uTex0, 0);
+      gl.uniform1i(uTex1, 1);
+      gl.uniform1f(uProg, state.progress);
+      gl.uniform2f(uRes0, tex0Res[0], tex0Res[1]);
+      gl.uniform2f(uRes1, tex1Res[0], tex1Res[1]);
+      gl.uniform2f(uSize, canvas.width, canvas.height);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    };
+
+    const loadImg = (url, unit) => new Promise((res, rej) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        makeTex(img, unit);
+        if (unit === 0) tex0Res = [img.naturalWidth, img.naturalHeight];
+        else            tex1Res = [img.naturalWidth, img.naturalHeight];
+        ready++;
+        res();
+      };
+      img.onerror = rej;
+      img.src = url;
     });
 
-    // Hover timeline: collapse the spread back to 0 with center-out stagger.
-    const tl = gsap.timeline({ paused: true });
-    tl.to(paths, {
-      x: 0,
-      duration: 0.9,
-      ease: 'expo.out',
-      stagger: { from: 'center', amount: 0.45 },
-    });
+    Promise.all([loadImg(defaultUrl, 0), loadImg(hoverUrl, 1)])
+      .then(() => {
+        resize();
+        render();
+        // Hide the CSS background image now that WebGL has both frames.
+        if (cssImg) cssImg.style.opacity = '0';
+      })
+      .catch(() => { /* fallback: CSS bg image stays visible */ });
 
-    // Hover targets the whole footer so the user doesn't need to land on the
-    // wordmark itself (which is pointer-events: none anyway).
-    const footer = wrap.closest('.footer') || wrap;
-    let isOver = false;
-    footer.addEventListener('mouseenter', () => {
-      if (isOver) return;
-      isOver = true;
-      tl.play();
-    });
-    footer.addEventListener('mouseleave', () => {
-      if (!isOver) return;
-      isOver = false;
-      tl.reverse();
+    window.addEventListener('resize', () => { resize(); render(); }, { passive: true });
+
+    const tweenTo = (target) => {
+      gsap.to(state, {
+        progress: target,
+        duration: 0.9,
+        ease: 'power3.inOut',
+        onUpdate: render,
+      });
+    };
+    card.addEventListener('mouseenter', () => tweenTo(1));
+    card.addEventListener('mouseleave', () => tweenTo(0));
+  }
+
+  /* ── Method reveal — per-card text stagger.
+     Each .method-card title is split into words; on scroll-into-view the
+     words rise + fade in with a small stagger, body fades after. Images
+     get a subtle scale-in. ScrollTrigger uses the card itself as trigger
+     so the reveal fires when the card slides in to become visible. */
+  // Hand-picked X positions (% of head width) that feel random but stay in-bounds.
+  const NUM_X = [8, 55, 36, 62, 14, 44, 22];
+
+  // Wrap a node's text in an inner span so the outer can mask the slide.
+  function wrapInner(node, innerClass) {
+    const inner = document.createElement('span');
+    inner.className = innerClass;
+    inner.textContent = node.textContent;
+    node.textContent = '';
+    node.appendChild(inner);
+    return inner;
+  }
+
+  function runMethodReveal() {
+    const cards = document.querySelectorAll('.method-card');
+    if (!cards.length || !has.gsap) return;
+
+    cards.forEach((card, i) => {
+      const title = card.querySelector('.method-card__title');
+      const body  = card.querySelector('.method-card__body');
+      const figs  = card.querySelectorAll('.method-card__img');
+      const imgs  = card.querySelectorAll('.method-card__img img');
+      const num   = card.querySelector('.method-card__num');
+
+      // Position number at its random X + wrap its digit for masked slide.
+      let numInner = null;
+      if (num) {
+        num.style.left = NUM_X[i % NUM_X.length] + '%';
+        numInner = wrapInner(num, 'method-card__num__inner');
+      }
+
+      // Title stays visible by default. A subtle fade-up enhances on reveal but
+      // never hides the text if the trigger fails — title text is the priority.
+      // (Mask reveal is reserved for the number badge and images.)
+
+      // Pre-hide (only the elements that have safe fallback if anim doesn't run)
+      if (numInner)         gsap.set(numInner,    { yPercent: 110 });
+      if (body)             gsap.set(body,        { y: 20, opacity: 0 });
+      if (figs.length)      gsap.set(figs,        { clipPath: 'inset(100% 0% 0% 0%)' });
+      if (imgs.length)      gsap.set(imgs,        { scale: 1.12 });
+
+      const play = () => {
+        const ease = 'power3.inOut';
+        const tl = gsap.timeline({ defaults: { ease } });
+        if (numInner) {
+          tl.to(numInner, {
+            yPercent: 0,
+            duration: 1.6,
+          }, 0);
+        }
+        if (title) {
+          tl.from(title, {
+            y: 30, opacity: 0,
+            duration: 1.0,
+          }, 0.15);
+        }
+        if (body) {
+          tl.to(body, {
+            y: 0, opacity: 1,
+            duration: 0.9, ease: 'power2.inOut',
+          }, 0.4);
+        }
+        if (figs.length) {
+          tl.to(figs, {
+            clipPath: 'inset(0% 0% 0% 0%)',
+            duration: 1.3,
+            ease: 'expo.inOut',
+            stagger: 0.1,
+          }, 0.2);
+        }
+        if (imgs.length) {
+          tl.to(imgs, {
+            scale: 1,
+            duration: 1.6,
+            ease: 'expo.inOut',
+            stagger: 0.1,
+          }, 0.2);
+        }
+      };
+
+      if (has.scrollTrigger) {
+        ScrollTrigger.create({
+          trigger: card,
+          start: 'top 85%',
+          once: true,
+          onEnter: play,
+        });
+      } else {
+        play();
+      }
     });
   }
 
@@ -724,6 +1171,8 @@
     runCursor();
     runNavBehavior();
     runSections();
+    runMethodReveal();
+    runRelated();
     runFooterMark();
     runHeroIntro().then(afterHero);
   }

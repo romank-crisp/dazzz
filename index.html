@@ -12,7 +12,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/lucide@latest"></script>
 
-  <link rel="stylesheet" href="style.css?v=20260508-4">
+  <link rel="stylesheet" href="style.css?v=20260508-31">
 
   <script>
     // Reset scroll BEFORE first paint — disables browser auto-restore so the
@@ -46,7 +46,7 @@
       width: clamp(200px, 22vw, 320px);
       border-radius: 4px;
       overflow: hidden;
-      box-shadow: 0 40px 120px rgba(0,0,0,.5), 0 8px 28px rgba(0,0,0,.28);
+      box-shadow: none;
       will-change: transform, opacity;
     }
     .hi-card img, .hi-card video {
@@ -96,25 +96,38 @@
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
       background-size: 200px;
     }
-    /* Nav stays transparent always — only text color flips per section. */
-    .site-nav { background: transparent !important; }
+    /* ── Nav theming & state ────────────────────────────────────────────
+       Two independent body attributes drive the nav:
 
-    /* Hero theme — JS sets body[data-hero-active] via IntersectionObserver
-       (true while heroIntro is >50% in viewport). Nav swaps to white text. */
-    body[data-hero-active="true"] {
-      background: #050505;
-    }
-    body[data-hero-active="true"] .site-nav__link,
-    body[data-hero-active="true"] .site-nav__descriptor span,
-    body[data-hero-active="true"] .site-nav__lang a {
+         data-nav-theme    "light" (default) | "dark"
+                           Set by main.js's probe-based detector — samples
+                           the element directly under the nav and walks up
+                           to the nearest [data-theme]. Controls colors.
+
+         data-hero-active  "true" only while the entrance animation plays.
+                           Forces the nav into the expanded state, even if
+                           the user is mid-scroll. Cleared in afterHero().
+
+       Nav background is transparent in two cases: when the theme is dark
+       (so the dark section shows through) or when the nav is compact
+       (the page color is fine to show through small sliver of nav).
+    */
+    body[data-nav-theme="dark"] .site-nav { background: transparent; }
+    .site-nav[data-scrolled="true"]       { background: transparent; }
+
+    body[data-nav-theme="dark"] .site-nav__link,
+    body[data-nav-theme="dark"] .site-nav__descriptor span,
+    body[data-nav-theme="dark"] .site-nav__lang a {
       color: #EFEAE2;
     }
-    body[data-hero-active="true"] .site-nav__wordmark {
+    body[data-nav-theme="dark"] .site-nav__wordmark {
       /* SVG fills are accent blue; brightness(0) flattens to black,
          invert(1) flips to white — no yellow cast from inverting blue. */
       filter: brightness(0) invert(1);
     }
-    /* Force nav expanded during hero — overrides any data-scrolled state. */
+
+    /* Force nav expanded during the entrance animation — overrides any
+       compact state that might have been set by initial scroll restore. */
     body[data-hero-active="true"] .site-nav__descriptor,
     body[data-hero-active="true"] .site-nav__group,
     body[data-hero-active="true"] .site-nav__lang {
@@ -155,6 +168,7 @@
       flex: 0 0 auto;
       white-space: nowrap;
       margin: 0;
+      color: var(--accent);
     }
     .gallery__panel--hl .hl-rule {
       flex: 1 1 0;
@@ -163,11 +177,11 @@
     }
     .gallery__panel--hl .hl-caption {
       font-family: "Instrument Sans", sans-serif;
-      font-size: clamp(13px, 1vw, 16px);
-      line-height: 1.4;
-      color: rgba(239, 234, 226, 0.55);
+      font-size: clamp(14px, 1.05vw, 17px);
+      line-height: 1.5;
+      color: rgba(239, 234, 226, 0.7);
       margin: 0;
-      max-width: 280px;
+      max-width: 52ch;
     }
     @media (max-width: 860px) {
       .gallery__panel--hl .hl-title { font-size: clamp(56px, 14vw, 80px); }
@@ -179,7 +193,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 </head>
-<body data-theme="white" data-hero-active="true">
+<body data-theme="white" data-hero-active="true" data-nav-theme="dark">
 
   <!-- ============================================================
        SITE NAV
@@ -212,14 +226,15 @@
 
     <div class="site-nav__lang">
       <a class="site-nav__link" href="#" hreflang="en" aria-current="true">English</a>
-      <a class="site-nav__link site-nav__link--muted" href="#" hreflang="de">German</a>
+      <a class="site-nav__link site-nav__link--muted" href="#" hreflang="ru">Russian</a>
     </div>
   </header>
 
   <main id="page">
 
-    <!-- ── Hero intro — full-height section, scrolls away after animation -->
-    <div id="heroIntro" aria-hidden="true">
+    <!-- ── Hero intro — full-height section, scrolls away after animation
+         data-theme="ink" tells the nav-theme probe this is a dark section. -->
+    <div id="heroIntro" aria-hidden="true" data-theme="ink">
       <div class="hi-stack" id="hiStack"></div>
       <div class="hi-overlay" id="hiOverlay">
         <div class="hi-overlay-flat"></div>
@@ -237,9 +252,8 @@
     </div>
 
     <!-- ============================================================
-         INTRO — "About the project" body copy
-         Title is now part of heroIntro; this section carries the
-         narrative paragraphs only.
+         INTRO — "About the project"
+         Caps label (left) + narrative paragraphs (right, 70 vw).
          ============================================================ -->
     <section class="intro" aria-label="About the project">
       <div class="intro__row">
@@ -259,49 +273,198 @@
     </section>
 
     <!-- ============================================================
-         SYNOPSIS — 2-col: description (sans, large) / credentials table
+         VIDEO BLEED — full-viewport showreel
+         data-theme="ink" tells the nav-theme probe this is a dark
+         section so the menu colours flip while it's under the nav.
+         ============================================================ -->
+    <section class="video-bleed" aria-label="Showreel" data-theme="ink" data-video-bleed>
+      <video class="video-bleed__media"
+             src="assets/video/vca-1.mp4"
+             autoplay muted loop playsinline preload="auto"
+             aria-hidden="true"></video>
+    </section>
+
+    <!-- ============================================================
+         SYNOPSIS — lead paragraph (project data table moved into
+         the intro section's right column above).
          ============================================================ -->
     <section class="synopsis">
       <p class="lead" data-split="words">
         For the 245<sup>th</sup> season of the Bolshoi Theatre, Van Cleef &amp; Arpels premiered the ballet-opera <em>Zephyr and Flora, or&nbsp;Metamorphoses</em>. We staged the evening in the round — a central double-sided stage divided the hall into two performance realms: ballet on one side, high jewellery defile on the other.
       </p>
-
-      <dl class="synopsis__table">
-        <div class="synopsis__row">
-          <dt class="caps">Client</dt>
-          <dd>
-            <span class="text">Van Cleef &amp; Arpels</span>
-            <span class="text">Bolshoi Theatre</span>
-          </dd>
-        </div>
-        <div class="synopsis__row">
-          <dt class="caps">Format</dt>
-          <dd>
-            <span class="text">Gala dinner</span>
-            <span class="text">High jewellery defile</span>
-            <span class="text">Ballet-opera</span>
-          </dd>
-        </div>
-        <div class="synopsis__row">
-          <dt class="caps">Location</dt>
-          <dd>
-            <span class="text">Pashkov House, Moscow</span>
-          </dd>
-        </div>
-        <div class="synopsis__row">
-          <dt class="caps">Year</dt>
-          <dd>
-            <span class="text">2021</span>
-          </dd>
-        </div>
-      </dl>
     </section>
 
     <!-- ============================================================
-         HIGHLIGHTS
-         Pinned horizontal scroll. Lives inside .gallery so it inherits
-         the dark-on-cream rhythm; the plate / pair movements were
-         removed by client request.
+         METHOD — stacked sticky cards (now appears BEFORE highlights).
+         Each method step is a full-viewport editorial card. Cards are
+         position: sticky and have an increasing z-index, so as the user
+         scrolls the next card slides up and covers the previous one
+         (which stays sticky underneath until released).
+         ============================================================ -->
+    <section class="method method--stack" aria-label="Our method">
+
+      <header class="method__header">
+        <span class="caps">Our method</span>
+      </header>
+
+      <article class="method-card" data-card-index="1">
+        <div class="method-card__head">
+          <span class="method-card__num" aria-hidden="true">1</span>
+          <h3 class="method-card__title mega-h2">Concept&nbsp;— Defining the Framework</h3>
+          <p class="method-card__body text">We developed the creative concept from the ground up, establishing the intellectual and aesthetic foundation of the project.</p>
+        </div>
+        <div class="method-card__media method-card__media--2col">
+          <figure class="method-card__img">
+            <img src="assets/img/cases/vca-bolshoi/vca-1.png"
+                 alt="Pashkov Hall · gala interior" loading="lazy" decoding="async">
+          </figure>
+          <figure class="method-card__img">
+            <img src="assets/img/cases/vca-bolshoi/vca-2.png"
+                 alt="Performers backstage in motion" loading="lazy" decoding="async">
+          </figure>
+        </div>
+      </article>
+
+      <article class="method-card" data-card-index="2">
+        <div class="method-card__head">
+          <span class="method-card__num" aria-hidden="true">2</span>
+          <h3 class="method-card__title mega-h2">Reading the Space&nbsp;— Constraint as a Driver</h3>
+          <p class="method-card__body text">The venue became both a starting point and a challenge: a space with strict rules and limitations, yet filled with inspiration and grandeur. This required a precise and respectful approach, where constraints shaped the creative direction.</p>
+        </div>
+        <div class="method-card__media method-card__media--2col">
+          <figure class="method-card__img">
+            <img src="assets/img/cases/vca-bolshoi/vca-3.png"
+                 alt="Models in jewellery walking the defile" loading="lazy" decoding="async">
+          </figure>
+          <figure class="method-card__img">
+            <img src="assets/img/cases/vca-bolshoi/vca-6.png"
+                 alt="Soloist in white, light streaks behind" loading="lazy" decoding="async">
+          </figure>
+        </div>
+      </article>
+
+      <article class="method-card" data-card-index="3">
+        <div class="method-card__head">
+          <span class="method-card__num" aria-hidden="true">3</span>
+          <h3 class="method-card__title mega-h2">Scenography&nbsp;— Architecture as a Guide</h3>
+          <p class="method-card__body text">The purity of colour, the natural light of the atrium, and the clarity of architectural lines led to an intentionally ascetic scenography — a white canvas designed for speakers and broadcast.</p>
+        </div>
+        <div class="method-card__media method-card__media--3col">
+          <figure class="method-card__img">
+            <img src="assets/img/cases/vca-bolshoi/vca-4.png"
+                 alt="Ballerina mid-leap in candlelight" loading="lazy" decoding="async">
+          </figure>
+          <figure class="method-card__img">
+            <img src="assets/img/cases/vca-bolshoi/vca-5.png"
+                 alt="Ballet rehearsal backstage" loading="lazy" decoding="async">
+          </figure>
+          <figure class="method-card__img">
+            <img src="assets/img/cases/vca-bolshoi/vca-6.png"
+                 alt="Soloist in white, light streaks behind" loading="lazy" decoding="async">
+          </figure>
+        </div>
+      </article>
+
+      <article class="method-card" data-card-index="4">
+        <div class="method-card__head">
+          <span class="method-card__num" aria-hidden="true">4</span>
+          <h3 class="method-card__title mega-h2">System Thinking&nbsp;— Designing for Dual Reality</h3>
+          <p class="method-card__body text">We created a full scenographic system for both live and online formats, anticipating how the space would function simultaneously on camera and in physical presence.</p>
+        </div>
+        <div class="method-card__media method-card__media--4col">
+          <figure class="method-card__img">
+            <img src="assets/img/cases/vca-bolshoi/vca-7.png"
+                 alt="Wide view of the staged environment" loading="lazy" decoding="async">
+          </figure>
+          <figure class="method-card__img">
+            <img src="assets/img/cases/vca-bolshoi/vca-2.png"
+                 alt="Performers backstage in motion" loading="lazy" decoding="async">
+          </figure>
+          <figure class="method-card__img">
+            <img src="assets/img/cases/vca-bolshoi/vca-11.png"
+                 alt="Models on a runway under projected baroque visuals" loading="lazy" decoding="async">
+          </figure>
+          <figure class="method-card__img">
+            <img src="assets/img/cases/vca-bolshoi/vca-5.png"
+                 alt="Ballet rehearsal backstage" loading="lazy" decoding="async">
+          </figure>
+        </div>
+      </article>
+
+      <article class="method-card" data-card-index="5">
+        <div class="method-card__head">
+          <span class="method-card__num" aria-hidden="true">5</span>
+          <h3 class="method-card__title mega-h2">Dramaturgy&nbsp;— Structuring Time and Attention</h3>
+          <p class="method-card__body text">We built the dialogue as a precise narrative arc, sustaining audience engagement throughout a five-hour broadcast.</p>
+        </div>
+        <div class="method-card__media method-card__media--2col">
+          <figure class="method-card__img">
+            <img src="assets/img/cases/vca-bolshoi/vca-8.png"
+                 alt="Banquet table close-up with crystal candelabras" loading="lazy" decoding="async">
+          </figure>
+          <figure class="method-card__img">
+            <img src="assets/img/cases/vca-bolshoi/vca-9.png"
+                 alt="Ballet performance on stage with audience" loading="lazy" decoding="async">
+          </figure>
+        </div>
+      </article>
+
+      <article class="method-card" data-card-index="6">
+        <div class="method-card__head">
+          <span class="method-card__num" aria-hidden="true">6</span>
+          <h3 class="method-card__title mega-h2">Visual Unity&nbsp;— One Language Across All Media</h3>
+          <p class="method-card__body text">All digital content — from openers to speaker streams — was conceived as a single aesthetic manifesto, ensuring a seamless dialogue between online and offline participants.</p>
+        </div>
+        <div class="method-card__media method-card__media--3col">
+          <figure class="method-card__img">
+            <img src="assets/img/cases/vca-bolshoi/vca-10.png"
+                 alt="Soloist in white gown, motion-blurred" loading="lazy" decoding="async">
+          </figure>
+          <figure class="method-card__img">
+            <img src="assets/img/cases/vca-bolshoi/vca-4.png"
+                 alt="Ballerina mid-leap in candlelight" loading="lazy" decoding="async">
+          </figure>
+          <figure class="method-card__img">
+            <img src="assets/img/cases/vca-bolshoi/vca-8.png"
+                 alt="Banquet table close-up with crystal candelabras" loading="lazy" decoding="async">
+          </figure>
+        </div>
+      </article>
+
+      <article class="method-card" data-card-index="7">
+        <div class="method-card__head">
+          <span class="method-card__num" aria-hidden="true">7</span>
+          <h3 class="method-card__title mega-h2">Experience Design&nbsp;— The Audience Journey</h3>
+          <p class="method-card__body text">The entire audience journey was constructed through our proprietary Method, where each moment is intentionally designed and conceptually grounded.</p>
+        </div>
+        <div class="method-card__media method-card__media--3col">
+          <figure class="method-card__img">
+            <img src="assets/img/cases/vca-bolshoi/vca-11.png"
+                 alt="Models on a runway under projected baroque visuals" loading="lazy" decoding="async">
+          </figure>
+          <figure class="method-card__img">
+            <img src="assets/img/cases/vca-bolshoi/vca-12.png"
+                 alt="Defile finale tableau" loading="lazy" decoding="async">
+          </figure>
+          <figure class="method-card__img">
+            <img src="assets/img/cases/vca-bolshoi/vca-1.png"
+                 alt="Pashkov Hall · final glance" loading="lazy" decoding="async">
+          </figure>
+        </div>
+      </article>
+
+    </section>
+
+    <!-- ============================================================
+         HIGHLIGHTS REVEAL — sits behind method cards (z:0). The last
+         card's release exposes this static dark panel. Wrap gives the
+         sticky element a containing block tall enough to stick for a
+         full viewport AFTER method ends.
+         ============================================================ -->
+    <!-- ============================================================
+         HIGHLIGHTS — pinned horizontal scroll. Sits beneath method
+         cards (z-index 0) with negative margin so the card stack
+         exposes it as the last card scrolls past.
          ============================================================ -->
     <section class="gallery" aria-label="Highlights">
 
@@ -320,7 +483,7 @@
               <h3 class="mega-h1 hl-title">Highlights</h3>
               <span class="hl-rule" aria-hidden="true"></span>
             </div>
-            <p class="hl-caption">minutes of original music<br>created on the basis of</p>
+            <p class="hl-caption">A 360° production&nbsp;— ballet, opera, scenography, and high jewellery brought into a single evening for the 245th season of the Bolshoi Theatre.</p>
           </div>
 
           <!-- 01 — gala interior, chandeliers, hall in candlelight -->
@@ -427,6 +590,54 @@
       </div>
     </section>
 
+
+    <!-- ============================================================
+         CREDENTIALS — project data table
+         Caps label (left) + 50 vw table (right). Table cols 20 / 80.
+         Sits directly above the tags block at the end of the case study.
+         ============================================================ -->
+    <section class="intro" aria-label="Credentials">
+      <div class="intro__row">
+        <div class="intro__col intro__col--left">
+          <span class="caps caps--solid">Credentials</span>
+        </div>
+        <div class="intro__col intro__col--right">
+          <dl class="info-table">
+            <div class="info-row">
+              <dt class="caps">Division</dt>
+              <dd class="text">Creative studio, Event bureau</dd>
+            </div>
+            <div class="info-row">
+              <dt class="caps">Client</dt>
+              <dd class="text">Van Cleef &amp; Arpels, Bolshoi Theatre</dd>
+            </div>
+            <div class="info-row">
+              <dt class="caps">Format</dt>
+              <dd class="text">Gala dinner, High jewellery defile, Ballet-opera</dd>
+            </div>
+            <div class="info-row">
+              <dt class="caps">Location</dt>
+              <dd class="text">Pashkov House, Moscow</dd>
+            </div>
+            <div class="info-row">
+              <dt class="caps">Year</dt>
+              <dd class="text">2021</dd>
+            </div>
+            <div class="info-row">
+              <dt class="caps">Bolshoi ballet dancers</dt>
+              <dd class="text">
+                Zephyr (ballet): Artem Ovcharenko<br>
+                Flora (ballet): Daria Khokhlova<br>
+                Borey: Igor Tsvirko<br>
+                Kleonisa: Kristina Kretova<br>
+                Erigone: Anna Tikhomirova
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
     <!-- ============================================================
          TAGS — keywords describing the project's craft & themes
          Full-bleed pill list, flex-wraps across rows.
@@ -459,8 +670,52 @@
       </ul>
     </section>
 
+    <!-- ============================================================
+         RELATED PROJECTS — pinned horizontal scroll. Sits last in the
+         case-study flow, immediately above the footer.
+         ============================================================ -->
+    <section class="related" aria-label="Related projects" data-pin-related>
+      <header class="related__header">
+        <span class="related__mark" aria-hidden="true"></span>
+        <h2 class="mega-h1">Related <em>projects</em></h2>
+      </header>
+
+      <div class="related__rail">
+        <a class="related__card" href="#" data-related-card
+           data-default-img="assets/img/cases/_related-cases-thumbs/vca-2.png"
+           data-hover-img="assets/img/cases/_related-cases-thumbs/vca-2-hover.png">
+          <div class="related__card-img" style="background-image: url('assets/img/cases/_related-cases-thumbs/vca-2.png')"></div>
+          <span class="related__card-meta">Case study</span>
+          <h3 class="related__card-title">Cartier Art<br>Dialogues</h3>
+        </a>
+
+        <a class="related__card" href="#" data-related-card>
+          <div class="related__card-img" style="background-image: url('assets/img/cases/vca-bolshoi/vca-3.png')"></div>
+          <span class="related__card-meta">Case study</span>
+          <h3 class="related__card-title">Brands inspire&nbsp;us,<br>we inspire&nbsp;brands</h3>
+        </a>
+
+        <a class="related__card" href="#" data-related-card>
+          <div class="related__card-img" style="background-image: url('assets/img/cases/vca-bolshoi/vca-1.png')"></div>
+          <span class="related__card-meta">Case study</span>
+          <h3 class="related__card-title">Hermès &mdash;<br>Maison's Garden</h3>
+        </a>
+
+        <a class="related__card" href="#" data-related-card>
+          <div class="related__card-img" style="background-image: url('assets/img/cases/vca-bolshoi/vca-7.png')"></div>
+          <span class="related__card-meta">Case study</span>
+          <h3 class="related__card-title">Bvlgari &mdash;<br>Heritage in Motion</h3>
+        </a>
+
+        <a class="related__card" href="#" data-related-card>
+          <div class="related__card-img" style="background-image: url('assets/img/cases/vca-bolshoi/vca-12.png')"></div>
+          <span class="related__card-meta">Case study</span>
+          <h3 class="related__card-title">Chanel &mdash;<br>Métiers d'Art</h3>
+        </a>
+      </div>
+    </section>
+
     <!-- credits       → Pass 4 -->
-    <!-- related case  → Pass 4 (Flip) -->
     <!-- "D" mark      → Pass 4 -->
   </main>
 
@@ -478,7 +733,7 @@
       <div class="footer__row">
         <!-- col 1 — tagline + CTA -->
         <div class="footer__col footer__col--lead">
-          <p class="footer__tagline">Brands inspire&nbsp;us, we inspire&nbsp;brands</p>
+          <p class="footer__tagline">Brands inspire&nbsp;us,<br>we inspire&nbsp;brands</p>
           <a class="footer__cta" href="#">Schedule a call</a>
         </div>
 
@@ -520,6 +775,6 @@
   <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"></script>
 
   <!-- main.js is a classic script: deterministic order after CDN scripts above. -->
-  <script src="main.js?v=20260508-2"></script>
+  <script src="main.js?v=20260508-20"></script>
 </body>
 </html>
