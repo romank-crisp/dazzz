@@ -133,6 +133,28 @@ html, body, * { cursor: none; }
   border: 1.5px solid var(--accent);
 }
 
+/* Play-button cursor — shown while hovering the full-bleed video block.
+   Larger accent-filled disc with a cream play triangle inside. */
+.cursor[data-mode="play"] {
+  width: 84px;
+  height: 84px;
+  margin: -42px 0 0 -42px;
+  background: var(--accent);
+  border: 0;
+}
+.cursor[data-mode="play"]::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 56%;                            /* slight optical right-shift to centre the triangle visually */
+  transform: translate(-50%, -50%);
+  width: 0;
+  height: 0;
+  border-left: 18px solid var(--cream);
+  border-top: 12px solid transparent;
+  border-bottom: 12px solid transparent;
+}
+
 /* Global text-selection highlight — accent on cream text. */
 ::selection      { background: var(--accent); color: var(--cream); }
 ::-moz-selection { background: var(--accent); color: var(--cream); }
@@ -820,7 +842,10 @@ html:not([data-ready]) .split-char { opacity: 0; }
 
 .synopsis {
   background: var(--cream);
-  padding: var(--section-y) var(--gutter);
+  /* Sits between the full-bleed video and the Method block — the previous
+     var(--section-y) padding (16rem) created a 62 vh empty gap. Tightened
+     so the lead paragraph + Method top breathing room land around ~33 vh. */
+  padding: clamp(40px, 5vw, 72px) var(--gutter);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: clamp(3rem, 6vw, 5rem);
@@ -930,7 +955,7 @@ html:not([data-ready]) .split-char { opacity: 0; }
 
 .method {
   background: var(--cream);
-  padding-top: 120px;          /* requested top breathing room */
+  padding-top: 32px;           /* small breathing room — synopsis above carries the air */
 }
 .method--stack {
   position: relative;

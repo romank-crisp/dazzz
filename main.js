@@ -174,42 +174,40 @@
       new ResizeObserver(() => syncNavHeight(nav)).observe(nav);
     }
 
-    /* Word-mask hover: split each link's text into per-word mask wrappers. */
+    /* Word-mask hover: each link's text is wrapped as a single mask unit so
+       multi-word labels ("Awards & Press", "Contact us") slide up as one
+       phrase with a single leading arrow — same behaviour as one-word links. */
     nav.querySelectorAll('.site-nav__link').forEach((link) => {
       if (link.dataset.maskDone) return;
       const text = (link.textContent || '').trim().replace(/\s+/g, ' ');
       if (!text) return;
-      const words = text.split(' ');
       link.textContent = '';
-      words.forEach((word, i) => {
-        const wrap = document.createElement('span');
-        wrap.className = 'nav-word';
-        wrap.style.setProperty('--i', String(i));
 
-        const inner = document.createElement('span');
-        inner.className = 'nav-word__inner';
+      const wrap = document.createElement('span');
+      wrap.className = 'nav-word';
+      wrap.style.setProperty('--i', '0');
 
-        const a = document.createElement('span');
-        a.className = 'nav-word__row';
-        a.textContent = word + (i < words.length - 1 ? ' ' : '');
+      const inner = document.createElement('span');
+      inner.className = 'nav-word__inner';
 
-        const b = document.createElement('span');
-        b.className = 'nav-word__row nav-word__row--alt';
-        b.setAttribute('aria-hidden', 'true');
-        if (i === 0) {
-          const icon = document.createElement('span');
-          icon.className = 'nav-word__icon';
-          icon.innerHTML = ARROW_RIGHT_SVG;
-          b.appendChild(icon);
-        }
-        const txt = document.createElement('span');
-        txt.textContent = word;
-        b.appendChild(txt);
+      const a = document.createElement('span');
+      a.className = 'nav-word__row';
+      a.textContent = text;
 
-        inner.append(a, b);
-        wrap.appendChild(inner);
-        link.appendChild(wrap);
-      });
+      const b = document.createElement('span');
+      b.className = 'nav-word__row nav-word__row--alt';
+      b.setAttribute('aria-hidden', 'true');
+      const icon = document.createElement('span');
+      icon.className = 'nav-word__icon';
+      icon.innerHTML = ARROW_RIGHT_SVG;
+      b.appendChild(icon);
+      const txt = document.createElement('span');
+      txt.textContent = text;
+      b.appendChild(txt);
+
+      inner.append(a, b);
+      wrap.appendChild(inner);
+      link.appendChild(wrap);
       link.dataset.maskDone = '1';
     });
 
@@ -436,7 +434,7 @@
     gsap.set(cards, {
       scale:    0.04,
       opacity:  0,
-      rotation: () => gsap.utils.random(-12, 12),
+      rotation: () => gsap.utils.random(-15, 15),
       x:        () => gsap.utils.random(-40, 40),
       y:        () => gsap.utils.random(-30, 30),
       transformOrigin: 'center center',
@@ -789,6 +787,15 @@
     });
     document.addEventListener('mouseout', (e) => {
       if (e.target.closest?.(hoverSelector)) cursor.dataset.hover = 'false';
+    });
+
+    // Cursor mode swap — over the full-bleed video the dot becomes a
+    // play-button affordance (accent-filled disc + cream play triangle).
+    // Direct enter/leave on the element avoids flickers from descendant
+    // mouseover/mouseout bubbling.
+    document.querySelectorAll('[data-video-bleed]').forEach((zone) => {
+      zone.addEventListener('mouseenter', () => { cursor.dataset.mode = 'play'; });
+      zone.addEventListener('mouseleave', () => { cursor.dataset.mode = ''; });
     });
 
     function tick() {
