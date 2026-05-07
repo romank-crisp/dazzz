@@ -9,6 +9,9 @@
 
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+// Lucide ArrowRight as inline SVG (24×24, stroke-width 2)
+const ARROW_RIGHT_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+
 // ---- GSAP plugin registration -----------------------------------------------
 // SplitText is paid; we'll feature-detect when Pass 2 needs it.
 if (window.gsap) {
@@ -32,6 +35,12 @@ if (window.Lenis && window.gsap) {
   lenis.on('scroll', ScrollTrigger.update);
   gsap.ticker.add((time) => lenis.raf(time * 1000));
   gsap.ticker.lagSmoothing(0);
+
+  // Block scroll until hero intro animation finishes
+  if (document.getElementById('heroIntro')) {
+    lenis.stop();
+    document.addEventListener('heroIntroComplete', () => lenis.start(), { once: true });
+  }
 }
 
 const cursor = null; // cursor removed
@@ -553,33 +562,32 @@ const ctx  = (window.gsap && page) ? gsap.context(() => {
     const words = text.split(' ');
     link.textContent = '';
     words.forEach((word, i) => {
-      if (i > 0) link.appendChild(document.createTextNode(' '));
+      // Wrap each word in a mask container
       const wrap = document.createElement('span');
       wrap.className = 'nav-word';
       wrap.style.setProperty('--i', String(i));
       const inner = document.createElement('span');
       inner.className = 'nav-word__inner';
+
+      // Resting row: word + space (except last word)
       const a = document.createElement('span');
       a.className = 'nav-word__row';
-      a.textContent = word;
+      a.textContent = word + (i < words.length - 1 ? ' ' : '');
+
+      // Hover row: icon (first word only) + word, no space
       const b = document.createElement('span');
       b.className = 'nav-word__row nav-word__row--alt';
       b.setAttribute('aria-hidden', 'true');
-      // Add icon only to the first word of each link
       if (i === 0) {
         const icon = document.createElement('span');
         icon.className = 'nav-word__icon';
-        if (window.lucide?.ArrowRight) {
-          const svg = window.lucide.ArrowRight.toSvg();
-          icon.innerHTML = svg;
-        } else {
-          icon.textContent = '→';
-        }
+        icon.innerHTML = ARROW_RIGHT_SVG;
         b.appendChild(icon);
       }
       const txt = document.createElement('span');
       txt.textContent = word;
       b.appendChild(txt);
+
       inner.append(a, b);
       wrap.appendChild(inner);
       link.appendChild(wrap);
