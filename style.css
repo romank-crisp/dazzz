@@ -1,0 +1,1112 @@
+/* ---------------------------------------------------------------------------
+   Dazzz Universe — Case Study (En Coulisses)
+   Pass 1: design tokens + reset only. Component styles arrive Pass 2+.
+   --------------------------------------------------------------------------- */
+
+:root {
+  /* — Colour (updated from Figma) ------------------------------------------ */
+  --ink:     #0F0E0C;       /* warm off-black */
+  --cream:   #EFEAE2;       /* warm cream — page + nav background */
+  --oxblood: #a545ff;       /* violet accent — updated from Figma */
+
+  --ink-55:  rgb(15 14 12 / 0.55);
+  --cream-55:rgb(255 255 255 / 0.55);
+
+  /* — Typography ───────────────────────────────────────────────────────────
+     Two faces only:
+       --ff-serif → Instrument Serif (display headings, leads)
+       --ff-sans  → Instrument Sans  (UI, body, sub-headings, captions)
+     Legacy aliases (--ff-display, --ff-ui) kept so older selectors still work
+     during the refactor; removed once components are migrated.            */
+  --ff-serif:   "Instrument Serif", "Times New Roman", serif;
+  --ff-sans:    "Instrument Sans", -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --ff-ui:      var(--ff-sans);    /* legacy alias */
+  --ff-display: var(--ff-serif);   /* legacy alias */
+
+  /* Body baseline (24 px target). Set on <body>, not <html>, to keep 1rem = 16px. */
+  --fs-body:     clamp(18px, 1.67vw, 24px);
+
+  /* — Type scale ─────────────────────────────────────────────────────────── */
+  /* Mega serif — uppercase H1 + sentence-case H2 (editorial) */
+  --fs-mega-h1:  clamp(56px, 7.91vw, 114px);   /* "EN COULISSE" — Figma 113.947 */
+  --fs-mega-h2:  clamp(40px, 5.5vw,   80px);   /* sentence-case mega serif */
+
+  /* Sans heading scale (Instrument Sans) */
+  --fs-h1:       clamp(40px, 4.5vw, 64px);
+  --fs-h2:       clamp(32px, 3.5vw, 48px);
+  --fs-h3:       clamp(24px, 2.6vw, 36px);
+  --fs-h4:       clamp(20px, 2vw,   28px);
+  --fs-h5:       clamp(18px, 1.7vw, 22px);
+
+  /* Lead — Instrument Serif paragraph copy (large + small) */
+  --fs-lead:     clamp(22px, 2.2vw, 32px);
+  --fs-lead-sm:  clamp(18px, 1.7vw, 22px);
+
+  /* Body text scale — Instrument Sans */
+  --fs-text-lg: clamp(20px, 1.85vw, 28px);
+  --fs-text-md: clamp(18px, 1.67vw, 24px);    /* matches --fs-body */
+  --fs-text-sm: clamp(13px, 1vw,    16px);
+
+  /* CAPS / eyebrow */
+  --fs-caps:     clamp(11px, 0.85vw, 14px);
+
+  /* Legacy aliases (kept while migrating) */
+  --fs-title:    clamp(7rem, 15.3vw, 220px);
+  --fs-display:  clamp(3rem,   6vw,  7rem);
+  --fs-stat:     clamp(3.5rem, 7.5vw, 9rem);
+  --fs-eyebrow:  0.75rem;
+  --fs-caption:  14px;
+
+  --lh-title:   0.92;
+  --lh-display: 1.05;
+  --lh-stat:    1.2;
+  --lh-body:    1.45;
+
+  --tracking-eyebrow: 0.18em;
+
+  /* — Layout --------------------------------------------------------------- */
+  --gutter:     clamp(1.25rem, 2vw, 2.5rem);
+  --section-y:  clamp(8rem, 14vw, 16rem);
+
+  /* — Motion --------------------------------------------------------------- */
+  --dur-mask:    0.9s;       /* clip-path image reveals */
+  --dur-title:   1.2s;       /* hero title char stagger total */
+  --dur-prose:   0.6s;       /* synopsis word stagger */
+  --dur-hover:   0.4s;       /* generic hover */
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);          /* expo.out approx */
+  --ease-inout:  cubic-bezier(0.65, 0, 0.35, 1);         /* power3.inOut */
+}
+
+/* ---------------------------------------------------------------------------
+   Reset — light. No normalize.css; we control the surface area.
+   --------------------------------------------------------------------------- */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--ff-ui);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Set the page body baseline (24 px target). Kept off <html> to avoid
+   redefining 1rem and breaking every rem-based clamp downstream. */
+body { font-size: var(--fs-body); }
+
+
+html {
+  /* Lenis controls scroll; keep native smooth off so we don't fight it. */
+  scroll-behavior: auto;
+}
+
+body {
+  min-height: 100vh;
+  overflow-x: clip;
+}
+
+img, video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+a { color: inherit; text-decoration: none; }
+
+button {
+  font: inherit;
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+::selection { background: var(--oxblood); color: var(--cream); }
+
+/* ===========================================================================
+   TYPOGRAPHY SYSTEM
+   ─────────────────────────────────────────────────────────────────────────
+   Two faces:
+     · Instrument Serif → mega editorial titles + lead paragraphs
+     · Instrument Sans  → H1–H5 headings, body text, captions, CAPS labels
+
+   Compose by class:
+     <h1 class="mega-h1">EN COULISSE</h1>      ← serif uppercase
+     <h2 class="mega-h2">Hall of four movements</h2>  ← serif sentence
+     <p class="lead">…</p>          ← serif large lead
+     <p class="lead-sm">…</p>       ← serif small lead
+     <h2 class="h2">Section</h2>    ← sans heading
+     <p class="text-large">…</p>    ← sans body, oversized
+     <p class="text">…</p>          ← sans body, default (24 px)
+     <p class="text-small">…</p>    ← sans body, captions
+     <span class="caps">label</span> ← uppercase tracking
+   =========================================================================== */
+
+/* — Mega serif (Instrument Serif) ─────────────────────────────────────── */
+.mega-h1, .mega-h2 {
+  font-family: var(--ff-serif);
+  font-weight: 400;
+  font-style: normal;
+  color: var(--ink);
+  margin: 0;
+}
+.mega-h1 {
+  font-size: var(--fs-mega-h1);
+  line-height: 1.03;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+.mega-h2 {
+  font-size: var(--fs-mega-h2);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+/* — Sans heading scale (Instrument Sans) ──────────────────────────────── */
+.h1, .h2, .h3, .h4, .h5 {
+  font-family: var(--ff-sans);
+  font-weight: 500;
+  color: var(--ink);
+  margin: 0;
+  letter-spacing: -0.015em;
+}
+.h1 { font-size: var(--fs-h1); line-height: 1.05; }
+.h2 { font-size: var(--fs-h2); line-height: 1.1; }
+.h3 { font-size: var(--fs-h3); line-height: 1.15; }
+.h4 { font-size: var(--fs-h4); line-height: 1.2; letter-spacing: -0.01em; }
+.h5 { font-size: var(--fs-h5); line-height: 1.25; letter-spacing: -0.005em; }
+
+/* — Lead paragraphs (Instrument Serif) ────────────────────────────────── */
+.lead, .lead-sm {
+  font-family: var(--ff-serif);
+  font-weight: 400;
+  font-style: normal;
+  color: var(--ink);
+  margin: 0;
+}
+.lead    { font-size: var(--fs-lead);    line-height: 1.2;  letter-spacing: -0.015em; }
+.lead-sm { font-size: var(--fs-lead-sm); line-height: 1.3;  letter-spacing: -0.01em; }
+.lead em, .lead-sm em { font-style: italic; }
+
+/* — Body text (Instrument Sans) ───────────────────────────────────────── */
+.text-large, .text, .text-small {
+  font-family: var(--ff-sans);
+  font-weight: 400;
+  color: var(--ink);
+  margin: 0;
+}
+.text-large { font-size: var(--fs-text-lg); line-height: 1.4;  }
+.text       { font-size: var(--fs-text-md); line-height: 1.45; }
+.text-small { font-size: var(--fs-text-sm); line-height: 1.5;  color: var(--ink-55); }
+
+.text-large em, .text em, .text-small em,
+.text-large i, .text i, .text-small i {
+  font-family: var(--ff-serif);   /* inline italic switches to serif */
+  font-style: italic;
+}
+
+/* — CAPS / eyebrow (Instrument Sans, all caps, tracked) ───────────────── */
+.caps {
+  font-family: var(--ff-sans);
+  font-weight: 500;
+  font-size: var(--fs-caps);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-55);
+  display: inline-block;
+}
+.caps--solid { color: var(--ink); }
+[data-theme="ink"] .caps        { color: var(--cream-55); }
+[data-theme="ink"] .caps--solid { color: var(--cream); }
+
+/* — Theme inversion utilities ─────────────────────────────────────────── */
+[data-theme="ink"] .mega-h1,
+[data-theme="ink"] .mega-h2,
+[data-theme="ink"] .h1, [data-theme="ink"] .h2,
+[data-theme="ink"] .h3, [data-theme="ink"] .h4,
+[data-theme="ink"] .h5,
+[data-theme="ink"] .lead, [data-theme="ink"] .lead-sm,
+[data-theme="ink"] .text-large, [data-theme="ink"] .text {
+  color: var(--cream);
+}
+[data-theme="ink"] .text-small { color: var(--cream-55); }
+
+
+/* ───────────── Legacy primitives (kept while migrating) ───────────── */
+.eyebrow {                                  /* legacy → use .caps */
+  font-family: var(--ff-sans);
+  font-weight: 500;
+  font-size: var(--fs-caps);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-55);
+}
+.eyebrow--solid { color: var(--ink); }
+[data-theme="ink"] .eyebrow { color: var(--cream-55); }
+[data-theme="ink"] .eyebrow--solid { color: var(--cream); }
+
+.display {                                  /* legacy display class */
+  font-family: var(--ff-serif);
+  font-weight: 400;
+  font-style: normal;
+  font-size: var(--fs-display);
+  line-height: var(--lh-display);
+  letter-spacing: -0.01em;
+}
+
+.title {
+  font-family: var(--ff-serif);
+  font-style: normal;
+  font-weight: 400;
+  font-size: var(--fs-title);
+  line-height: var(--lh-title);
+  letter-spacing: -0.025em;
+  color: var(--ink);
+  margin: 0;
+}
+
+.stat-num {
+  font-family: var(--ff-serif);
+  font-style: normal;
+  font-weight: 400;
+  font-size: var(--fs-stat);
+  line-height: var(--lh-stat);
+  letter-spacing: -0.02em;
+}
+
+/* ---------------------------------------------------------------------------
+   Reveal primitives — pre-state for entrance animations.
+   GSAP overrides these on enter; if JS fails, content still appears
+   (we set `data-ready` on <html> after first frame).
+   --------------------------------------------------------------------------- */
+
+[data-reveal="mask"] {
+  overflow: hidden;
+}
+[data-reveal="mask"] > img,
+[data-reveal="mask"] > video {
+  transform: scale(1.06);
+  will-change: transform, clip-path;
+}
+html[data-ready] [data-reveal="mask"] > img,
+html[data-ready] [data-reveal="mask"] > video {
+  /* JS handles the entrance; no CSS pre-hide needed once ready. */
+}
+
+/* Word/char split pre-state. Set by main.js after splitting; CSS only
+   defines the off-screen state so reveals don't flash unstyled content. */
+.split-line { display: block; overflow: hidden; }
+.split-word, .split-char { display: inline-block; will-change: transform; }
+html:not([data-ready]) .split-word,
+html:not([data-ready]) .split-char { opacity: 0; }
+
+/* ---------------------------------------------------------------------------
+   SITE NAV
+   Mirrors the Figma 12-column grid.
+   6 direct children sit in 6 proportional columns:
+     descriptor (2fr) | logo+gap (3fr) | about (2fr) | clients (2fr) | contact (2fr) | lang (1fr)
+   At 1440 px with 40 px gutters this aligns to:
+     ~0 %   descriptor starts
+     ~19 %  logo starts  (Figma: 18.95 %)
+     ~42 %  About starts (Figma: 41.67 % + 23 px offset)
+     ~58 %  Clients      (Figma: 58.33 % − 21 px)
+     ~75 %  Contact      (Figma: 75 % + 10 px)
+     ~92 %  Language     (Figma: 91.67 % + 3 px)
+   Row-gap keeps the two text rows separated by 33 px (Figma-exact at 1440 px).
+   --------------------------------------------------------------------------- */
+
+/*
+  Flexbox with percentage widths derived directly from Figma's 12-col grid
+  (columns measured as % of the 1440 px design frame):
+
+    Descriptor  0 → 18.95 %   = 18.95 %
+    Logo+gap   18.95 → 41.67 % = 22.72 %  (logo ≈ 9.65 % wide, rest is air)
+    About      41.67 → 58.33 % = 16.66 %
+    Clients    58.33 → 75.00 % = 16.67 %
+    Contact    75.00 → 91.67 % = 16.67 %
+    Language   91.67 → 100 %   =  8.33 %
+*/
+/* ───────────────────────────────────────────────────────────────
+   Site nav — Figma node 49:25
+   12-col grid on a 1440 frame. Items placed at columns 1, 3, 6, 8,
+   10, 12. Vertical alignment: items start at the same baseline.
+   ─────────────────────────────────────────────────────────────── */
+.site-nav {
+  width: 100%;
+  background: var(--cream);
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  column-gap: 0;
+  align-items: center;          /* centre everything against the DAZZZ logo */
+  padding-top:    clamp(40px, 4.57vw, 66px);
+  padding-bottom: clamp(40px, 4.57vw, 66px);
+  padding-left:   clamp(20px, 2.85vw, 41px);
+  padding-right:  clamp(20px, 2.85vw, 41px);
+}
+
+/* ─── Descriptor — "Creative Studio / & Event Buro" ────────── */
+.site-nav__descriptor {
+  grid-column: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 1.2vw, 17px);
+  font-family: var(--ff-ui);
+  font-size: clamp(16px, 1.58vw, 23px);
+  font-weight: 400;
+  line-height: 1;
+  color: var(--ink);
+}
+
+/* ─── Logo (SVG wordmark — Figma asset 139×97) ───────────── */
+.site-nav__logo {
+  grid-column: 3 / span 2;
+  display: flex;
+  align-items: center;
+}
+.site-nav__wordmark {
+  width: clamp(80px, 9.65vw, 139px);   /* 9.65% of 1440 = 139 */
+  height: auto;
+  aspect-ratio: 138.938 / 96.9705;
+  display: block;
+  user-select: none;
+}
+
+/* ─── Nav link groups (About/Work, Clients/Awards, Contact) ─── */
+.site-nav__group {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 1.2vw, 17px);
+}
+.site-nav__group--about    { grid-column: 6 / span 2; }
+.site-nav__group--clients  { grid-column: 8 / span 2; }
+.site-nav__group--contact  { grid-column: 10 / span 2; }
+
+/* Contact has one link; add a phantom flex item so the group is the same
+   height as the two-link groups — keeps "Contact us" level with "About". */
+.site-nav__group--contact::after {
+  content: '';
+  display: block;
+  height: clamp(16px, 1.58vw, 23px); /* = .site-nav__link font-size × line-height 1 */
+}
+
+/* ─── Shared link style ─────────────────────────────────────── */
+.site-nav__link {
+  font-family: var(--ff-ui);
+  font-size: clamp(16px, 1.58vw, 23px);
+  font-weight: 400;
+  line-height: 1;
+  color: var(--ink);
+  text-decoration: none;
+  transition: color var(--dur-hover) var(--ease-out);
+  white-space: nowrap;
+}
+.site-nav__link:hover { color: var(--ink-55); }
+
+/* ─── Language switcher ─────────────────────────────────────── */
+.site-nav__lang {
+  grid-column: 12 / span 1;
+  justify-self: end;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 1.2vw, 17px);
+  align-items: flex-end;
+}
+.site-nav__link--muted { opacity: 0.3; }
+
+/* ─── Responsive collapse ───────────────────────────────────── */
+@media (max-width: 860px) {
+  .site-nav {
+    display: flex;
+    align-items: center;
+    padding: 1.25rem var(--gutter);
+  }
+  .site-nav__descriptor { flex: 1 1 auto; }
+  .site-nav__logo       { flex: 0 0 auto; margin-top: 0; }
+  .site-nav__wordmark   { font-size: 56px; }
+  .site-nav__group,
+  .site-nav__lang       { display: none; }  /* mobile menu: Pass 4 */
+}
+
+/* ---------------------------------------------------------------------------
+   HERO
+   --------------------------------------------------------------------------- */
+
+.hero {
+  position: relative;
+  width: 100%;
+  height: 100svh;
+  min-height: 640px;
+  background: var(--ink);
+  color: var(--cream);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.hero__media {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  z-index: 0;
+}
+.hero__media img,
+.hero__media video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.78) contrast(1.02);
+}
+
+.hero__nav {
+  position: absolute;
+  top: var(--gutter);
+  left: var(--gutter);
+  right: var(--gutter);
+  display: flex;
+  justify-content: space-between;
+  z-index: 3;
+}
+
+.hero__meta {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-width: 22ch;
+}
+.hero__meta--client {
+  top: clamp(5rem, 12vh, 9rem);
+  left: var(--gutter);
+}
+.hero__meta--year {
+  top: clamp(5rem, 12vh, 9rem);
+  right: var(--gutter);
+  text-align: right;
+  align-items: flex-end;
+}
+
+.hero__title {
+  position: absolute;
+  left: var(--gutter);
+  right: var(--gutter);
+  bottom: clamp(-1.5rem, -1vw, -0.5rem); /* breaks the grid downward */
+  z-index: 2;
+  color: var(--cream);
+  text-align: left;
+  /* Hairline left edge to anchor the optical break. */
+  margin: 0;
+}
+
+.hero__logo {
+  position: absolute;
+  top: 4.8%;
+  left: 3.63%;
+  width: 11.16%;   /* matches Figma inset: 1 - 0.8521 - 0.0363 */
+  height: 13.05%;  /* matches Figma inset: 1 - 0.0480 - 0.8215 */
+  z-index: 3;
+  pointer-events: none;
+}
+.hero__logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: top left;
+}
+
+.hero__scroll {
+  position: absolute;
+  bottom: var(--gutter);
+  right: var(--gutter);
+  z-index: 4;
+  color: var(--cream-55);
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  letter-spacing: 0.3em;
+}
+
+/* ---------------------------------------------------------------------------
+   INTRO — Figma node 49:25 (block under hero photo)
+
+   Editorial title row: "EN COULISSE  ──────  IMMERSIVE"
+   Subtitle:           "UNIQUE EXPERIENCE AND CONCEPT"
+   Then a two-column row:
+     · left  → eyebrow label "ABOUT THE PROJECT" (with top rule)
+     · right → body copy (with top rule, ~6/12 cols, indented 1st line)
+
+   Title is Instrument Serif Regular at ~114px (uppercase, -0.03em tracking,
+   line-height 1.03). Body is Inter Regular 26px, line-height 1.399.
+   --------------------------------------------------------------------------- */
+
+.intro {
+  background: var(--cream);
+  color: var(--ink);
+  width: 100%;
+  padding: clamp(40px, 4.7vw, 68px) clamp(20px, 2.85vw, 41px);
+  box-sizing: border-box;
+}
+
+/* — Title row: "En Coulisse" ───── "Immersive" ──────────────────── */
+/* INTRO — layout only. Typography is supplied by .mega-h1 / .text / .caps. */
+.intro__title-row {
+  display: flex;
+  align-items: center;
+  gap: clamp(20px, 2.5vw, 36px);
+  margin: 0;
+}
+.intro__title-row .mega-h1 { white-space: nowrap; flex: 0 0 auto; }
+
+.intro__title-rule {
+  flex: 1 1 auto;
+  height: 0;
+  border-top: 1px solid var(--ink);
+  align-self: center;
+}
+
+/* Two-column body row — left line 543 / 40 gap / right line 777 (Figma). */
+.intro__row {
+  margin-top: clamp(48px, 6vw, 86px);
+  display: grid;
+  grid-template-columns: 543fr 40fr 777fr;
+  gap: 0;
+  align-items: start;
+}
+.intro__col {
+  border-top: 1px solid var(--ink);
+  padding-top: clamp(14px, 1.5vw, 22px);
+}
+.intro__col--left  { grid-column: 1; }
+.intro__col--right { grid-column: 3; }
+
+.intro__body p { margin: 0 0 24px 0; }
+.intro__body p:last-child { margin-bottom: 0; }
+
+.intro__indent { display: inline; padding-left: 5em; }
+
+.intro sup {
+  font-feature-settings: "sups" 1;
+  font-size: 0.7em;
+  vertical-align: 0.3em;
+  line-height: 0;
+}
+
+@media (max-width: 860px) {
+  .intro__title-row { flex-wrap: wrap; gap: 0; }
+  .intro__title-rule { display: none; }
+  .intro__title-row .mega-h1 { white-space: normal; }
+  .intro__row { grid-template-columns: 1fr; }
+  .intro__col--left, .intro__col--right { grid-column: 1; }
+  .intro__col--right { margin-top: clamp(20px, 4vw, 40px); }
+}
+
+/* ---------------------------------------------------------------------------
+   SYNOPSIS — 2-col: description / credentials table
+   --------------------------------------------------------------------------- */
+
+.synopsis {
+  background: var(--cream);
+  padding: var(--section-y) var(--gutter);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(3rem, 6vw, 5rem);
+  border-top: 1px solid color-mix(in srgb, var(--ink) 18%, transparent);
+}
+
+@media (min-width: 860px) {
+  .synopsis {
+    grid-template-columns: minmax(0, 1fr) 35%;
+    gap: clamp(3rem, 6vw, 6rem);
+    align-items: start;
+  }
+}
+
+/* SYNOPSIS — layout only. The lead paragraph + credential rows pull
+   typography from .lead / .text / .caps utilities. */
+.synopsis .lead sup {
+  font-size: 0.55em;
+  vertical-align: super;
+  margin-left: 0.04em;
+}
+
+.synopsis__table {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.synopsis__row {
+  display: grid;
+  grid-template-columns: 10ch 1fr;
+  gap: 1rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid color-mix(in srgb, var(--ink) 15%, transparent);
+  align-items: start;
+}
+.synopsis__row:last-child {
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 15%, transparent);
+}
+.synopsis__row dt { padding-top: 0.05em; }
+.synopsis__row dd {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+/* ---------------------------------------------------------------------------
+   STATS
+   --------------------------------------------------------------------------- */
+
+.stats {
+  position: relative;
+  background: var(--cream);
+  border-top: 1px solid color-mix(in srgb, var(--ink) 18%, transparent);
+  padding: clamp(4rem, 8vw, 8rem) var(--gutter) var(--section-y);
+}
+
+.stats__eyebrow {
+  display: block;
+  margin-bottom: clamp(2rem, 4vw, 4rem);
+}
+
+.stats__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(2rem, 4vw, 3rem) var(--gutter);
+}
+
+@media (min-width: 720px) {
+  .stats__list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1100px) {
+  .stats__list { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
+
+.stats__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  border-top: 1px solid color-mix(in srgb, var(--ink) 25%, transparent);
+  padding-top: 1rem;
+}
+
+.stats__num {
+  display: block;
+  color: var(--ink);
+  font-feature-settings: "tnum", "lnum";
+}
+
+.stats__label {
+  color: var(--ink-55);
+  max-width: 14ch;
+}
+
+/* ---------------------------------------------------------------------------
+   METHOD
+   --------------------------------------------------------------------------- */
+
+.method {
+  position: relative;
+  background: var(--cream);
+  padding: var(--section-y) 0;
+  display: grid;
+  gap: clamp(6rem, 10vw, 12rem);
+}
+
+.method__header {
+  padding: 0 var(--gutter);
+  display: grid;
+  gap: clamp(1.5rem, 3vw, 3rem);
+}
+@media (min-width: 1024px) {
+  .method__header {
+    grid-template-columns: 1fr minmax(0, 7fr) 4fr;
+  }
+  .method__header > .eyebrow { align-self: start; padding-top: 0.6em; }
+  .method__title { grid-column: 2 / 3; max-width: 16ch; }
+}
+
+.method__title { margin: 0; }
+
+.method__block {
+  position: relative;
+  padding: 0 var(--gutter);
+}
+
+.method__num {
+  font-family: var(--ff-display);   /* Fraunces Light Italic — node 23:8 */
+  font-variation-settings: "opsz" 144;
+  font-weight: 300;
+  font-style: italic;
+  font-size: clamp(2.5rem, 4.5vw, 5rem);
+  line-height: 1;
+  color: var(--oxblood);
+  letter-spacing: -0.02em;
+  margin-bottom: 1.25rem;
+}
+
+.method__heading {
+  font-family: var(--ff-display);   /* Fraunces Regular — node 23:9 */
+  font-variation-settings: "opsz" 60;
+  font-weight: 400;
+  font-size: clamp(1.5rem, 2.4vw, 2.5rem);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  margin: 0 0 1rem;
+  max-width: 22ch;
+}
+.method__heading--invert { color: var(--cream); }
+
+.method__body {
+  font-family: var(--ff-ui);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  max-width: 38ch;
+  margin: 0;
+  color: var(--ink);
+}
+.method__body em { font-style: italic; }
+.method__body--invert { color: var(--cream); }
+.method__body--lead {
+  font-family: var(--ff-display);
+  font-style: italic;
+  font-weight: 350;
+  font-size: clamp(1.25rem, 1.8vw, 1.75rem);
+  line-height: 1.3;
+  max-width: 32ch;
+  color: var(--ink-55);
+  margin-bottom: 2rem;
+}
+
+.method__media { margin: 0; overflow: hidden; }
+.method__media img { width: 100%; height: 100%; object-fit: cover; }
+
+/* 01 / 04 — paired text + image. Mirror flips the order. */
+.method__block--paired {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(2rem, 4vw, 4rem);
+  align-items: end;
+}
+.method__block--paired .method__media {
+  aspect-ratio: 4 / 5;
+}
+@media (min-width: 900px) {
+  .method__block--paired {
+    grid-template-columns: 5fr 6fr;
+  }
+  .method__block--paired .method__copy {
+    padding-bottom: clamp(1rem, 4vw, 4rem);
+  }
+  .method__block--paired.method__block--mirror {
+    grid-template-columns: 6fr 5fr;
+  }
+  .method__block--mirror .method__copy { order: 2; padding-left: clamp(1rem, 4vw, 4rem); }
+  .method__block--mirror .method__media { order: 1; }
+}
+
+/* 02 — full-bleed image with overlaid text */
+.method__block--bleed {
+  padding: 0;
+  position: relative;
+}
+.method__media--bleed {
+  width: 100%;
+  height: clamp(70vh, 86vh, 92vh);
+  background: var(--ink);
+}
+.method__media--bleed img { height: 100%; }
+.method__overlay {
+  position: absolute;
+  left: var(--gutter);
+  bottom: clamp(2rem, 5vw, 5rem);
+  right: var(--gutter);
+  max-width: 44ch;
+  z-index: 2;
+  color: var(--cream);
+}
+.method__overlay .method__num { color: var(--cream); }
+
+/* 03 — text-only with pull quote */
+.method__block--prose {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(2rem, 4vw, 4rem);
+}
+@media (min-width: 1024px) {
+  .method__block--prose {
+    grid-template-columns: 1fr minmax(0, 7fr) 4fr;
+  }
+  .method__block--prose .method__num { grid-column: 1 / 2; align-self: start; }
+  .method__block--prose .method__copy { grid-column: 2 / 3; }
+}
+.method__copy--wide { max-width: 60ch; }
+
+.method__quote {
+  margin: clamp(2rem, 4vw, 4rem) 0 0;
+  padding: clamp(2rem, 4vw, 4rem) 0 0;
+  border-top: 1px solid color-mix(in srgb, var(--ink) 25%, transparent);
+  font-style: italic;
+  font-weight: 300;
+  font-size: clamp(1.75rem, 3vw, 3rem);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  max-width: 24ch;
+  color: var(--ink);
+}
+
+/* 05 — quiet bleed (lead caption + wide image, no overlay) */
+.method__block--quiet { padding: 0 var(--gutter); display: grid; gap: 2rem; }
+.method__block--quiet .method__media--bleed {
+  height: clamp(60vh, 78vh, 86vh);
+  margin: 0 calc(-1 * var(--gutter)); /* break out of the gutter */
+}
+
+/* ---------------------------------------------------------------------------
+   GALLERY
+   --------------------------------------------------------------------------- */
+
+.gallery {
+  position: relative;
+  background: var(--cream);
+  padding: var(--section-y) 0 0;
+  display: grid;
+  gap: clamp(4rem, 7vw, 7rem);
+}
+
+.gallery__eyebrow {
+  padding: 0 var(--gutter);
+}
+
+.gallery__plate {
+  margin: 0;
+  position: relative;
+  overflow: hidden;
+  height: clamp(70vh, 86vh, 92vh);
+  background: var(--ink);
+}
+.gallery__plate img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+.gallery__plate figcaption {
+  position: absolute;
+  left: var(--gutter);
+  bottom: var(--gutter);
+  color: var(--cream-55);
+}
+
+.gallery__pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(1.5rem, 3vw, 3rem);
+  padding: 0 var(--gutter);
+}
+@media (min-width: 900px) {
+  .gallery__pair {
+    grid-template-columns: 4fr 7fr;
+    align-items: end;
+    gap: clamp(2rem, 4vw, 4rem);
+  }
+}
+.gallery__pair-tall, .gallery__pair-wide { margin: 0; overflow: hidden; }
+.gallery__pair-tall { aspect-ratio: 3 / 4; }
+.gallery__pair-wide { aspect-ratio: 16 / 10; transform: translateY(8%); }
+@media (max-width: 899px) { .gallery__pair-wide { transform: none; } }
+.gallery__pair img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Pinned horizontal scroll. The container is 100vh, the rail is set to a
+   computed pixel width by JS so ScrollTrigger can pin-and-scrub. */
+.gallery__pin {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--ink);
+  color: var(--cream);
+  margin-top: clamp(2rem, 4vw, 4rem);
+}
+
+.gallery__rail {
+  display: flex;
+  height: 100%;
+  align-items: stretch;
+  will-change: transform;
+}
+
+.gallery__panel {
+  flex: 0 0 auto;
+  width: clamp(70vw, 78vw, 82vw);
+  height: 100%;
+  margin: 0;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  padding: var(--gutter);
+  overflow: hidden;
+}
+.gallery__panel:first-child { padding-left: clamp(2rem, 6vw, 6rem); }
+.gallery__panel:last-child  { padding-right: clamp(2rem, 6vw, 6rem); }
+
+.gallery__panel--text {
+  width: clamp(60vw, 64vw, 70vw);
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  text-align: left;
+  padding-block: 0;
+}
+.gallery__panel--text > * { width: 100%; max-width: 60ch; }
+.gallery__panel--text .eyebrow { color: var(--cream-55); margin-bottom: 1.5rem; display: block; }
+.gallery__panel-title {
+  font-family: var(--ff-display);
+  font-weight: 400;
+  font-size: clamp(2.5rem, 5vw, 5.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin: 0 0 1.5rem;
+  color: var(--cream);
+}
+.gallery__panel-title em { font-style: italic; }
+.gallery__panel-body {
+  font-family: var(--ff-ui);
+  color: var(--cream-55);
+  font-size: var(--fs-body);
+  margin: 0;
+}
+
+.gallery__panel--media img {
+  position: absolute;
+  inset: -6% 0;        /* 6% overhang top + bottom gives parallax headroom */
+  width: 100%;
+  height: 112%;
+  object-fit: cover;
+}
+.gallery__panel--media figcaption {
+  position: relative;
+  z-index: 2;
+  color: var(--cream);
+  background: color-mix(in srgb, var(--ink) 70%, transparent);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0; /* no rounded corners — anti-SaaS */
+}
+
+/* — Highlights callout panel ────────────────────────────────────────
+   Sits between media plates inside the pinned rail.
+   Each item: big serif metric stacked over a short Inter descriptor.
+   Two layouts:
+     · --callout-3 → wider panel, 2-col grid (2 items left + 1 right)
+     · --callout-2 → narrow panel, single column with 2 items
+*/
+.gallery__panel--callout {
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: center;
+  /* horizontal padding only — vertical space handled by space-evenly inside columns */
+  padding: 0 clamp(2.5rem, 6vw, 6rem);
+  background: var(--ink);
+  gap: clamp(2rem, 5vw, 6rem);
+}
+
+/* Wider panel for 3 items, asymmetric 2+1. */
+.gallery__panel--callout-3 {
+  width: clamp(44vw, 50vw, 56vw);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(2.5rem, 5vw, 6rem);
+  align-items: stretch;   /* columns fill full panel height for space-evenly to work */
+}
+
+/* Narrower panel for 2 items, single column stacked. */
+.gallery__panel--callout-2 {
+  width: clamp(34vw, 40vw, 46vw);
+  display: flex;
+}
+
+/* A column inside a callout panel. The 3-up layout uses two of these. */
+.callout-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;   /* equal gap above first, between, and below last */
+  gap: 0;
+  height: 100%;
+}
+
+/* A single highlight: big number on top, label below. */
+.callout-item {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.75rem, 1.1vw, 1.1rem);
+  max-width: 24ch;
+}
+
+.callout-num {
+  font-family: var(--ff-serif);            /* Instrument Serif */
+  font-weight: 400;
+  font-size: clamp(3rem, 5.4vw, 5.5rem);
+  line-height: 0.9;
+  letter-spacing: -0.01em;
+  color: var(--cream);
+  white-space: nowrap;
+}
+
+.callout-quote {
+  font-family: var(--ff-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(2rem, 3.4vw, 3.6rem);
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+  color: var(--cream);
+}
+
+/* callout-label is kept only for colour; typography comes from .text */
+.callout-label,
+.callout-item .text {
+  color: var(--cream-55);
+}
+
+@media (max-width: 899px) {
+  .gallery__panel--callout-3,
+  .gallery__panel--callout-2 {
+    width: 88vw;
+    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+  }
+  .callout-col { justify-content: flex-start; gap: clamp(1.5rem, 4vw, 2.5rem); }
+}
+
+@media (max-width: 899px) {
+  /* On narrow screens the pinned section becomes a regular horizontal
+     scroller — pin would be cramped. */
+  .gallery__pin { height: auto; overflow-x: auto; scroll-snap-type: x mandatory; }
+  .gallery__panel { scroll-snap-align: start; height: 80vh; }
+}
+
+
+/* ---------------------------------------------------------------------------
+   Reduced motion — strip masks, parallax, smoother. Keep content visible.
+   Fade-only fallbacks under 0.3s.
+   --------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-mask:  0.3s;
+    --dur-title: 0.3s;
+    --dur-prose: 0.3s;
+    --dur-hover: 0.2s;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.2s !important;
+    scroll-behavior: auto !important;
+  }
+}

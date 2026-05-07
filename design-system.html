@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Design System — Dazzz Universe</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Instrument+Serif:ital@0;1&display=swap">
+
+  <link rel="stylesheet" href="style.css?v=20260507-1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+
+  <style>
+    /* ─── Page chrome ─────────────────────────────────────────────────── */
+    .ds {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 var(--gutter);
+    }
+    .ds-head {
+      padding: clamp(2.5rem, 4vw, 4rem) 0 clamp(1.5rem, 2.5vw, 2.5rem);
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 2rem;
+      flex-wrap: wrap;
+      border-bottom: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+    }
+    .ds-head__title { font-family: var(--ff-serif); font-size: clamp(2rem, 3.5vw, 3rem); font-weight: 400; margin: 0; }
+    .ds-head__crumbs { display: flex; gap: 1.25rem; }
+    .ds-head__crumbs a {
+      font-family: var(--ff-sans);
+      font-size: 13px; font-weight: 500;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--ink-55); text-decoration: none;
+    }
+    .ds-head__crumbs a:hover, .ds-head__crumbs a.active { color: var(--ink); }
+
+    /* ─── Tabs (pure CSS via radio + ~ selectors) ─────────────────────── */
+    .ds-tabs { padding: clamp(1rem, 2vw, 2rem) 0 clamp(2rem, 4vw, 4rem); }
+    .ds-tabs input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
+
+    .ds-tablist {
+      display: flex;
+      gap: 0;
+      flex-wrap: wrap;
+      border-bottom: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+      margin-bottom: clamp(2rem, 3vw, 3rem);
+    }
+    .ds-tab {
+      font-family: var(--ff-sans);
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-55);
+      padding: 1rem 1.5rem;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color 0.2s, border-color 0.2s;
+      user-select: none;
+    }
+    .ds-tab:hover { color: var(--ink); }
+
+    .ds-panel { display: none; }
+
+    /* Show the panel matching the checked radio */
+    #t-type:checked    ~ .ds-panels #panel-type,
+    #t-color:checked   ~ .ds-panels #panel-color,
+    #t-spacing:checked ~ .ds-panels #panel-spacing,
+    #t-motion:checked  ~ .ds-panels #panel-motion,
+    #t-assets:checked  ~ .ds-panels #panel-assets { display: block; }
+
+    /* Highlight active tab label */
+    #t-type:checked    ~ .ds-tablist label[for="t-type"],
+    #t-color:checked   ~ .ds-tablist label[for="t-color"],
+    #t-spacing:checked ~ .ds-tablist label[for="t-spacing"],
+    #t-motion:checked  ~ .ds-tablist label[for="t-motion"],
+    #t-assets:checked  ~ .ds-tablist label[for="t-assets"] {
+      color: var(--ink);
+      border-bottom-color: var(--ink);
+    }
+
+    /* ─── Specimen rows (compact) ─────────────────────────────────────── */
+    .spec {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 240px;
+      gap: 2rem;
+      padding: 1.25rem 0;
+      border-bottom: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+      align-items: baseline;
+    }
+    .spec:last-child { border-bottom: none; }
+    .spec__preview { min-height: 0; overflow: hidden; }
+    .spec__meta { display: flex; flex-direction: column; gap: 0.35rem; }
+    .spec__name {
+      font-family: "SF Mono", "Fira Mono", monospace;
+      font-size: 12px;
+      color: var(--oxblood);
+      background: color-mix(in srgb, var(--oxblood) 8%, transparent);
+      padding: 0.15em 0.5em;
+      width: fit-content;
+    }
+    .spec__desc {
+      font-family: var(--ff-sans);
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--ink-55);
+    }
+    .spec__token {
+      font-family: "SF Mono", "Fira Mono", monospace;
+      font-size: 11px;
+      color: color-mix(in srgb, var(--ink) 50%, transparent);
+    }
+
+    /* ─── Section labels inside panels ────────────────────────────────── */
+    .ds-group {
+      font-family: var(--ff-sans);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--ink-55);
+      margin: 2.5rem 0 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid color-mix(in srgb, var(--ink) 18%, transparent);
+    }
+    .ds-group:first-child { margin-top: 0; }
+
+    /* ─── Color swatches (compact grid) ───────────────────────────────── */
+    .swatches {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1.5rem;
+    }
+    .sw { display: flex; flex-direction: column; gap: 0.6rem; }
+    .sw__block {
+      aspect-ratio: 5 / 3;
+      border: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+    }
+    .sw[data-color="ink"]      .sw__block { background: #0F0E0C; }
+    .sw[data-color="cream"]    .sw__block { background: #EFEAE2; }
+    .sw[data-color="violet"]   .sw__block { background: #a545ff; }
+    .sw[data-color="ink-55"]   .sw__block { background: rgb(15 14 12 / 0.55); }
+    .sw[data-color="cream-55"] .sw__block { background: rgb(255 255 255 / 0.55); }
+
+    .sw__name { font-family: var(--ff-sans); font-size: 14px; font-weight: 500; color: var(--ink); }
+    .sw__val  { font-family: "SF Mono", monospace; font-size: 11px; color: var(--ink-55); }
+    .sw__use  { font-family: var(--ff-sans); font-size: 12px; color: var(--ink-55); line-height: 1.4; }
+
+    /* ─── Token table ─────────────────────────────────────────────────── */
+    .tk-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--ff-sans);
+      font-size: 13px;
+    }
+    .tk-table th, .tk-table td {
+      text-align: left;
+      padding: 0.6rem 0.85rem;
+      border-bottom: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+      vertical-align: middle;
+    }
+    .tk-table th {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--ink-55);
+    }
+    .tk-table td { color: var(--ink); }
+    .tk-table td:first-child {
+      font-family: "SF Mono", monospace;
+      font-size: 12px;
+      color: var(--oxblood);
+    }
+
+    /* ─── Motion ──────────────────────────────────────────────────────── */
+    .motion-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1.25rem;
+    }
+    .motion-card {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      padding: 1.25rem;
+      border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+    }
+    .motion-card__bar-track {
+      height: 3px;
+      background: color-mix(in srgb, var(--ink) 10%, transparent);
+      position: relative; overflow: hidden;
+      margin-bottom: 0.4rem;
+    }
+    .motion-card__bar {
+      position: absolute; left: 0; top: 0; bottom: 0; width: 0;
+      background: var(--oxblood);
+      animation: barGrow var(--bar-dur, 0.9s) var(--bar-ease, cubic-bezier(0.16,1,0.3,1)) infinite;
+      animation-delay: var(--bar-delay, 0s);
+    }
+    @keyframes barGrow {
+      0% { width: 0; opacity: 1; }
+      85% { width: 100%; opacity: 1; }
+      100% { width: 100%; opacity: 0; }
+    }
+    .motion-card__label { font-family: var(--ff-sans); font-weight: 500; font-size: 13px; color: var(--ink); }
+    .motion-card__token { font-family: "SF Mono", monospace; font-size: 11px; color: var(--oxblood); }
+    .motion-card__val   { font-family: "SF Mono", monospace; font-size: 11px; color: var(--ink-55); }
+
+    /* ─── Assets ──────────────────────────────────────────────────────── */
+    .assets-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 280px;
+      gap: 2.5rem;
+      align-items: start;
+      padding: 2rem 0;
+    }
+    .asset-preview {
+      display: flex; align-items: center; gap: 2rem;
+      padding: 2rem; border: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+      flex-wrap: wrap;
+    }
+
+    /* Hide spec border on dark previews so they read cleanly */
+    .spec--dark .spec__preview {
+      background: var(--ink);
+      padding: 1.5rem;
+    }
+
+    /* On preview rows, anything inside .spec__preview is constrained */
+    .spec__preview > * { max-width: 100%; }
+
+    @media (max-width: 720px) {
+      .spec { grid-template-columns: 1fr; }
+      .ds-tab { padding: 0.85rem 1rem; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="ds">
+
+    <!-- Header / breadcrumbs -->
+    <header class="ds-head">
+      <h1 class="ds-head__title">Design System</h1>
+      <nav class="ds-head__crumbs" aria-label="Project">
+        <a href="index.html">← Case Study</a>
+        <a href="design-system.html" class="active">Design System</a>
+        <a href="components.html">Components</a>
+      </nav>
+    </header>
+
+    <!-- TABS — pure CSS via radio + sibling selectors. ────────────────── -->
+    <section class="ds-tabs">
+      <input type="radio" name="ds" id="t-type" checked>
+      <input type="radio" name="ds" id="t-color">
+      <input type="radio" name="ds" id="t-spacing">
+      <input type="radio" name="ds" id="t-motion">
+      <input type="radio" name="ds" id="t-assets">
+
+      <div class="ds-tablist" role="tablist">
+        <label for="t-type"    class="ds-tab" role="tab">Typography</label>
+        <label for="t-color"   class="ds-tab" role="tab">Colour</label>
+        <label for="t-spacing" class="ds-tab" role="tab">Spacing</label>
+        <label for="t-motion"  class="ds-tab" role="tab">Motion</label>
+        <label for="t-assets"  class="ds-tab" role="tab">Assets</label>
+      </div>
+
+      <div class="ds-panels">
+
+        <!-- ════════ TYPOGRAPHY ════════ -->
+        <div class="ds-panel" id="panel-type">
+
+          <p class="ds-group">Mega Serif — Instrument Serif</p>
+
+          <div class="spec">
+            <div class="spec__preview"><h1 class="mega-h1" style="font-size: clamp(2.5rem, 5.5vw, 5rem)">En Coulisse</h1></div>
+            <div class="spec__meta">
+              <span class="spec__name">.mega-h1</span>
+              <span class="spec__desc">Editorial mega title — uppercase. Used for hero / intro statements.</span>
+              <span class="spec__token">--fs-mega-h1: clamp(56px, 7.91vw, 114px)</span>
+              <span class="spec__token">line-height: 1.03 · tracking: -0.03em</span>
+            </div>
+          </div>
+
+          <div class="spec">
+            <div class="spec__preview"><h2 class="mega-h2">A theatre that becomes a garden</h2></div>
+            <div class="spec__meta">
+              <span class="spec__name">.mega-h2</span>
+              <span class="spec__desc">Sentence-case mega serif — section openers, gallery panel titles.</span>
+              <span class="spec__token">--fs-mega-h2: clamp(40px, 5.5vw, 80px)</span>
+              <span class="spec__token">line-height: 1.05 · tracking: -0.02em</span>
+            </div>
+          </div>
+
+          <p class="ds-group">Lead — Instrument Serif</p>
+
+          <div class="spec">
+            <div class="spec__preview"><p class="lead">For the 245<sup style="font-size:0.55em;vertical-align:super">th</sup> season of the Bolshoi Theatre, Van Cleef &amp; Arpels premiered the ballet-opera <em>Zephyr and Flora</em>.</p></div>
+            <div class="spec__meta">
+              <span class="spec__name">.lead</span>
+              <span class="spec__desc">Large editorial lead paragraph. Use for the synopsis sentence below the hero.</span>
+              <span class="spec__token">--fs-lead: clamp(22px, 2.2vw, 32px)</span>
+              <span class="spec__token">line-height: 1.2</span>
+            </div>
+          </div>
+
+          <div class="spec">
+            <div class="spec__preview"><p class="lead-sm">Six months of rehearsals, one double-sided stage, a ton and a half of flowers — production at a glance.</p></div>
+            <div class="spec__meta">
+              <span class="spec__name">.lead-sm</span>
+              <span class="spec__desc">Smaller lead — sub-titles on the highlights intro panel.</span>
+              <span class="spec__token">--fs-lead-sm: clamp(18px, 1.7vw, 22px)</span>
+              <span class="spec__token">line-height: 1.3</span>
+            </div>
+          </div>
+
+          <p class="ds-group">Heading scale — Instrument Sans</p>
+
+          <div class="spec"><div class="spec__preview"><h1 class="h1">H1 — Section heading</h1></div>
+            <div class="spec__meta"><span class="spec__name">.h1</span><span class="spec__token">clamp(40px, 4.5vw, 64px) · 500</span></div>
+          </div>
+          <div class="spec"><div class="spec__preview"><h2 class="h2">H2 — Sub-section</h2></div>
+            <div class="spec__meta"><span class="spec__name">.h2</span><span class="spec__token">clamp(32px, 3.5vw, 48px) · 500</span></div>
+          </div>
+          <div class="spec"><div class="spec__preview"><h3 class="h3">H3 — Block heading</h3></div>
+            <div class="spec__meta"><span class="spec__name">.h3</span><span class="spec__token">clamp(24px, 2.6vw, 36px) · 500</span></div>
+          </div>
+          <div class="spec"><div class="spec__preview"><h4 class="h4">H4 — Card heading</h4></div>
+            <div class="spec__meta"><span class="spec__name">.h4</span><span class="spec__token">clamp(20px, 2vw, 28px) · 500</span></div>
+          </div>
+          <div class="spec"><div class="spec__preview"><h5 class="h5">H5 — Label heading</h5></div>
+            <div class="spec__meta"><span class="spec__name">.h5</span><span class="spec__token">clamp(18px, 1.7vw, 22px) · 500</span></div>
+          </div>
+
+          <p class="ds-group">Body text — Instrument Sans</p>
+
+          <div class="spec"><div class="spec__preview"><p class="text-large">A theatre that becomes a garden in a single cue. <em>Curtain · defile · ballet · garden.</em></p></div>
+            <div class="spec__meta"><span class="spec__name">.text-large</span><span class="spec__desc">Large prose. Inline <em>em</em> switches to serif italic.</span><span class="spec__token">clamp(20px, 1.85vw, 28px)</span></div>
+          </div>
+          <div class="spec"><div class="spec__preview"><p class="text">In 1817, the ballet Zephyr and Flora was staged at the Pashkov House, and 204 years later it was rethought and performed on the same stage. <em>Van Cleef &amp; Arpels</em> presented the premiere.</p></div>
+            <div class="spec__meta"><span class="spec__name">.text</span><span class="spec__desc">Default body — 24 px target. Site baseline.</span><span class="spec__token">clamp(18px, 1.67vw, 24px)</span></div>
+          </div>
+          <div class="spec"><div class="spec__preview"><p class="text-small">Stage in the round · opening tableau · 2021</p></div>
+            <div class="spec__meta"><span class="spec__name">.text-small</span><span class="spec__desc">Captions, credits, metadata. Renders at ink/55.</span><span class="spec__token">clamp(13px, 1vw, 16px)</span></div>
+          </div>
+
+          <p class="ds-group">Caps — Instrument Sans</p>
+
+          <div class="spec"><div class="spec__preview"><span class="caps">Highlights · 04</span></div>
+            <div class="spec__meta"><span class="spec__name">.caps</span><span class="spec__desc">Section labels, eyebrows, tags. Uppercase + tracked.</span><span class="spec__token">clamp(11px, 0.85vw, 14px) · 0.16em tracking · 500</span></div>
+          </div>
+          <div class="spec"><div class="spec__preview"><span class="caps caps--solid">About the project</span></div>
+            <div class="spec__meta"><span class="spec__name">.caps.caps--solid</span><span class="spec__desc">Solid ink variant — louder weight when needed.</span><span class="spec__token">color: --ink (vs --ink-55 default)</span></div>
+          </div>
+
+          <p class="ds-group">Type scale — token table</p>
+          <table class="tk-table">
+            <thead><tr><th>Token</th><th>Value</th><th>Min</th><th>Max</th><th>Use</th></tr></thead>
+            <tbody>
+              <tr><td>--fs-mega-h1</td><td>clamp(56px, 7.91vw, 114px)</td><td>56</td><td>114</td><td>Editorial mega heading (uppercase)</td></tr>
+              <tr><td>--fs-mega-h2</td><td>clamp(40px, 5.5vw, 80px)</td><td>40</td><td>80</td><td>Mega serif sub-heading</td></tr>
+              <tr><td>--fs-h1</td><td>clamp(40px, 4.5vw, 64px)</td><td>40</td><td>64</td><td>Sans H1</td></tr>
+              <tr><td>--fs-h2</td><td>clamp(32px, 3.5vw, 48px)</td><td>32</td><td>48</td><td>Sans H2</td></tr>
+              <tr><td>--fs-h3</td><td>clamp(24px, 2.6vw, 36px)</td><td>24</td><td>36</td><td>Sans H3</td></tr>
+              <tr><td>--fs-h4</td><td>clamp(20px, 2vw, 28px)</td><td>20</td><td>28</td><td>Sans H4</td></tr>
+              <tr><td>--fs-h5</td><td>clamp(18px, 1.7vw, 22px)</td><td>18</td><td>22</td><td>Sans H5</td></tr>
+              <tr><td>--fs-lead</td><td>clamp(22px, 2.2vw, 32px)</td><td>22</td><td>32</td><td>Lead paragraph</td></tr>
+              <tr><td>--fs-lead-sm</td><td>clamp(18px, 1.7vw, 22px)</td><td>18</td><td>22</td><td>Smaller lead</td></tr>
+              <tr><td>--fs-text-lg</td><td>clamp(20px, 1.85vw, 28px)</td><td>20</td><td>28</td><td>.text-large</td></tr>
+              <tr><td>--fs-text-md</td><td>clamp(18px, 1.67vw, 24px)</td><td>18</td><td>24</td><td>.text · body baseline</td></tr>
+              <tr><td>--fs-text-sm</td><td>clamp(13px, 1vw, 16px)</td><td>13</td><td>16</td><td>.text-small / captions</td></tr>
+              <tr><td>--fs-caps</td><td>clamp(11px, 0.85vw, 14px)</td><td>11</td><td>14</td><td>.caps / labels</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ════════ COLOUR ════════ -->
+        <div class="ds-panel" id="panel-color">
+          <p class="ds-group">Brand palette</p>
+          <div class="swatches">
+            <div class="sw" data-color="ink">
+              <div class="sw__block"></div>
+              <div><p class="sw__name">Ink</p><p class="sw__val">--ink · #0F0E0C</p><p class="sw__use">Body text, borders, dark surfaces.</p></div>
+            </div>
+            <div class="sw" data-color="cream">
+              <div class="sw__block"></div>
+              <div><p class="sw__name">Cream</p><p class="sw__val">--cream · #EFEAE2</p><p class="sw__use">Page background — warm off-white.</p></div>
+            </div>
+            <div class="sw" data-color="violet">
+              <div class="sw__block"></div>
+              <div><p class="sw__name">Violet</p><p class="sw__val">--oxblood · #a545ff</p><p class="sw__use">Single accent — selection highlight, design-system markers only.</p></div>
+            </div>
+            <div class="sw" data-color="ink-55">
+              <div class="sw__block"></div>
+              <div><p class="sw__name">Ink / 55</p><p class="sw__val">--ink-55 · rgb(15 14 12 / 0.55)</p><p class="sw__use">Captions, eyebrows, secondary text.</p></div>
+            </div>
+            <div class="sw" data-color="cream-55">
+              <div class="sw__block"></div>
+              <div><p class="sw__name">Cream / 55</p><p class="sw__val">--cream-55 · rgb(255 255 255 / 0.55)</p><p class="sw__use">Muted text on dark sections.</p></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ════════ SPACING ════════ -->
+        <div class="ds-panel" id="panel-spacing">
+          <p class="ds-group">Layout tokens</p>
+          <table class="tk-table">
+            <thead><tr><th>Token</th><th>Value</th><th>Min</th><th>Max</th><th>Use</th></tr></thead>
+            <tbody>
+              <tr><td>--gutter</td><td>clamp(1.25rem, 2vw, 2.5rem)</td><td>20px</td><td>40px</td><td>Page horizontal margin</td></tr>
+              <tr><td>--section-y</td><td>clamp(8rem, 14vw, 16rem)</td><td>128px</td><td>256px</td><td>Vertical section breathing</td></tr>
+              <tr><td>Design baseline</td><td>1440px frame</td><td>1280</td><td>1920</td><td>Figma anchor</td></tr>
+              <tr><td>Site nav</td><td>12-col grid</td><td>—</td><td>—</td><td>Items at cols 1, 3, 6, 8, 10, 12</td></tr>
+              <tr><td>Intro row</td><td>543fr · 40fr · 777fr</td><td>—</td><td>—</td><td>Left rule / gap / right rule (Figma)</td></tr>
+              <tr><td>Highlights panel</td><td>clamp(70vw, 78vw, 82vw)</td><td>—</td><td>—</td><td>Image plate width in pinned rail</td></tr>
+              <tr><td>Highlights callout-3</td><td>clamp(58vw, 64vw, 70vw)</td><td>—</td><td>—</td><td>2+1 layout panel</td></tr>
+              <tr><td>Highlights callout-2</td><td>clamp(34vw, 40vw, 46vw)</td><td>—</td><td>—</td><td>Stacked-2 narrow panel</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ════════ MOTION ════════ -->
+        <div class="ds-panel" id="panel-motion">
+          <p class="ds-group">Duration & easing</p>
+          <div class="motion-grid">
+            <div class="motion-card">
+              <div class="motion-card__bar-track"><div class="motion-card__bar" style="--bar-dur:0.9s;--bar-ease:cubic-bezier(0.16,1,0.3,1)"></div></div>
+              <span class="motion-card__token">--dur-mask</span>
+              <span class="motion-card__label">Image mask reveal</span>
+              <span class="motion-card__val">0.9s · expo.out</span>
+            </div>
+            <div class="motion-card">
+              <div class="motion-card__bar-track"><div class="motion-card__bar" style="--bar-dur:1.2s;--bar-ease:cubic-bezier(0.16,1,0.3,1);--bar-delay:0.3s"></div></div>
+              <span class="motion-card__token">--dur-title</span>
+              <span class="motion-card__label">Title char stagger</span>
+              <span class="motion-card__val">1.2s · expo.out</span>
+            </div>
+            <div class="motion-card">
+              <div class="motion-card__bar-track"><div class="motion-card__bar" style="--bar-dur:0.6s;--bar-ease:cubic-bezier(0.16,1,0.3,1)"></div></div>
+              <span class="motion-card__token">--dur-prose</span>
+              <span class="motion-card__label">Word stagger reveal</span>
+              <span class="motion-card__val">0.6s · expo.out</span>
+            </div>
+            <div class="motion-card">
+              <div class="motion-card__bar-track"><div class="motion-card__bar" style="--bar-dur:0.4s;--bar-ease:cubic-bezier(0.65,0,0.35,1)"></div></div>
+              <span class="motion-card__token">--dur-hover</span>
+              <span class="motion-card__label">Hover transition</span>
+              <span class="motion-card__val">0.4s · power3.inOut</span>
+            </div>
+            <div class="motion-card" style="background:color-mix(in srgb, var(--ink) 4%, transparent)">
+              <div style="font-family:var(--ff-sans);font-size:12px;color:var(--ink-55);line-height:1.55">
+                <strong style="color:var(--ink);display:block;margin-bottom:0.4rem">Reduced motion</strong>
+                All clip-path masks, parallax, and Lenis smooth-scroll are stripped. Replaced with 0.3s opacity fades only.
+              </div>
+            </div>
+            <div class="motion-card" style="background:color-mix(in srgb, var(--ink) 4%, transparent)">
+              <div style="font-family:var(--ff-sans);font-size:12px;color:var(--ink-55);line-height:1.55">
+                <strong style="color:var(--ink);display:block;margin-bottom:0.4rem">Ease tokens</strong>
+                <code>--ease-out</code> · cubic-bezier(0.16, 1, 0.3, 1)<br>
+                <code>--ease-inout</code> · cubic-bezier(0.65, 0, 0.35, 1)
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ════════ ASSETS ════════ -->
+        <div class="ds-panel" id="panel-assets">
+          <p class="ds-group">Brand mark</p>
+          <div class="assets-grid">
+            <div class="asset-preview">
+              <img src="assets/dazzz-wordmark.svg" alt="DAZZZ wordmark" width="139" height="97">
+              <img src="assets/dazzz-wordmark.svg" alt="" width="80" height="56" style="opacity:0.6">
+              <img src="assets/dazzz-wordmark.svg" alt="" width="46" height="32" style="opacity:0.4">
+            </div>
+            <div class="spec__meta">
+              <span class="spec__name">/assets/dazzz-wordmark.svg</span>
+              <span class="spec__desc">Custom DAZZZ wordmark — exported from Figma node 49:25 as SVG. Use the SVG (not a font) so the proportions never depend on a Google Font fallback.</span>
+              <span class="spec__token">viewBox: 138.938 × 96.97</span>
+              <span class="spec__token">aspect: ≈ 1.43 : 1</span>
+              <span class="spec__token">nav size: clamp(80px, 9.65vw, 139px)</span>
+            </div>
+          </div>
+
+          <p class="ds-group">Project plates</p>
+          <p class="text-small" style="margin-bottom: 1rem">12 production images live at <code>/assets/img/cases/vca-bolshoi/1–12.png</code> — the case mirrors them by index. Hero is <code>4.png</code>, the 4 highlights pull <code>1, 8, 9, 3</code>.</p>
+        </div>
+
+      </div>
+    </section>
+
+    <div style="height: clamp(3rem, 5vw, 5rem)"></div>
+  </div>
+
+</body>
+</html>

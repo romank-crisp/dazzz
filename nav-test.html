@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; }
+
+.nav {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  width: 100%;
+  background: #f0f0f0;
+  border-bottom: 1px solid #ccc;
+  padding-top: 40px;
+  padding-bottom: 60px;
+}
+.nav__descriptor { flex: 0 0 18.95%; padding-left: 40px; background: rgba(255,0,0,0.1); }
+.nav__logo       { flex: 0 0 22.72%; background: rgba(0,255,0,0.1); font-size: 48px; font-weight: 700; line-height: 1; display: flex; align-items: flex-start; }
+.nav__group      { flex: 0 0 16.67%; background: rgba(0,0,255,0.1); display: flex; flex-direction: column; gap: 14px; }
+.nav__lang       { flex: 0 0 8.33%;  background: rgba(255,165,0,0.1); display: flex; flex-direction: column; gap: 14px; align-items: flex-end; padding-right: 40px; }
+.nav__link { font-size: 19px; color: black; text-decoration: none; line-height: 1; }
+</style>
+</head>
+<body>
+<header class="nav">
+  <div class="nav__descriptor">
+    <span style="display:block">Creative Studio</span>
+    <span style="display:block">&amp; Event Buro</span>
+  </div>
+  <div class="nav__logo">DAZZZ</div>
+  <div class="nav__group">
+    <a class="nav__link" href="#">About</a>
+    <a class="nav__link" href="#">Work</a>
+  </div>
+  <div class="nav__group">
+    <a class="nav__link" href="#">Clients</a>
+    <a class="nav__link" href="#">Awards &amp; Press</a>
+  </div>
+  <div class="nav__group">
+    <a class="nav__link" href="#">Contact us</a>
+  </div>
+  <div class="nav__lang">
+    <a class="nav__link" href="#">English</a>
+    <a class="nav__link" href="#" style="opacity:0.3">German</a>
+  </div>
+</header>
+</body>
+</html>
