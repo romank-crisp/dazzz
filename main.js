@@ -565,15 +565,18 @@ const ctx  = (window.gsap && page) ? gsap.context(() => {
       const b = document.createElement('span');
       b.className = 'nav-word__row nav-word__row--alt';
       b.setAttribute('aria-hidden', 'true');
-      const icon = document.createElement('span');
-      icon.className = 'nav-word__icon';
-      if (window.lucide?.ArrowRight) {
-        const svg = window.lucide.ArrowRight.toSvg();
-        icon.innerHTML = svg;
-      } else {
-        icon.textContent = '→';
+      // Add icon only to the first word of each link
+      if (i === 0) {
+        const icon = document.createElement('span');
+        icon.className = 'nav-word__icon';
+        if (window.lucide?.ArrowRight) {
+          const svg = window.lucide.ArrowRight.toSvg();
+          icon.innerHTML = svg;
+        } else {
+          icon.textContent = '→';
+        }
+        b.appendChild(icon);
       }
-      b.appendChild(icon);
       const txt = document.createElement('span');
       txt.textContent = word;
       b.appendChild(txt);
