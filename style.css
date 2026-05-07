@@ -94,6 +94,48 @@ html, body {
   text-rendering: optimizeLegibility;
 }
 
+/* ─── Custom cursor — violet dot with lerp-physics tail ───────────
+   JS in main.js owns position. Element is created once on DOMContentLoaded.
+   Default OS cursor is hidden everywhere except form inputs (none here yet).
+   Element follows mouse via lerp on rAF; on hover over interactive targets
+   it scales up and shifts to ring style for subtle affordance. */
+html, body, * { cursor: none; }
+
+.cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;          /* center on its origin */
+  border-radius: 50%;
+  background: var(--oxblood);
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate3d(-100px, -100px, 0);   /* off-screen until first move */
+  transition:
+    width  0.25s var(--ease-out),
+    height 0.25s var(--ease-out),
+    margin 0.25s var(--ease-out),
+    opacity 0.25s var(--ease-out);
+  mix-blend-mode: normal;
+  will-change: transform;
+}
+.cursor[data-hover="true"] {
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px;
+  background: transparent;
+  border: 1.5px solid var(--oxblood);
+}
+.cursor[data-hidden="true"] { opacity: 0; }
+
+/* On touch devices — no cursor at all. */
+@media (hover: none), (pointer: coarse) {
+  html, body, * { cursor: auto; }
+  .cursor { display: none; }
+}
+
 /* Set the page body baseline (24 px target). Kept off <html> to avoid
    redefining 1rem and breaking every rem-based clamp downstream. */
 body { font-size: var(--fs-body); }
@@ -976,6 +1018,44 @@ html:not([data-ready]) .split-char { opacity: 0; }
   padding: var(--section-y) 0 0;
   display: grid;
   gap: clamp(4rem, 7vw, 7rem);
+}
+
+/* ─── TAGS — pill list of project keywords ───────────────────────
+   Full-bleed flex-wrap layout, matches site horizontal padding.
+   Pills: 1px ink border, ~6px radius, sentence-case, sans. */
+.tags {
+  width: 100%;
+  background: var(--cream);
+  padding: clamp(60px, 8vw, 120px) clamp(20px, 2.85vw, 41px);
+  box-sizing: border-box;
+}
+.tags__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(8px, 0.7vw, 12px);
+  width: 100%;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: clamp(8px, 0.7vw, 12px) clamp(14px, 1.4vw, 22px);
+  border: 1px solid var(--ink);
+  border-radius: 6px;
+  font-family: var(--ff-ui);
+  font-size: clamp(16px, 1.4vw, 22px);
+  font-weight: 400;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--ink);
+  transition: background-color var(--dur-hover) var(--ease-out),
+              color           var(--dur-hover) var(--ease-out);
+}
+.tag:hover {
+  background-color: var(--ink);
+  color: var(--cream);
 }
 
 .gallery__eyebrow {
