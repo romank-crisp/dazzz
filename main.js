@@ -537,6 +537,60 @@ const ctx  = (window.gsap && page) ? gsap.context(() => {
 
 }, page) : null;
 
+// ---- Site nav: word-mask hover + sticky compact-on-scroll -----------------
+// Wrap each link's text into per-word mask wrappers (two stacked rows),
+// then drive a [data-scrolled] flag on the header from Lenis (or scroll).
+(function siteNavBehavior() {
+  const nav = document.querySelector('.site-nav');
+  if (!nav) return;
+
+  // Wrap link text into mask structure once.
+  const links = nav.querySelectorAll('.site-nav__link');
+  links.forEach((link) => {
+    if (link.dataset.maskDone) return;
+    const text = (link.textContent || '').trim().replace(/\s+/g, ' ');
+    if (!text) return;
+    const words = text.split(' ');
+    link.textContent = '';
+    words.forEach((word, i) => {
+      if (i > 0) link.appendChild(document.createTextNode(' '));
+      const wrap = document.createElement('span');
+      wrap.className = 'nav-word';
+      wrap.style.setProperty('--i', String(i));
+      const inner = document.createElement('span');
+      inner.className = 'nav-word__inner';
+      const a = document.createElement('span');
+      a.className = 'nav-word__row';
+      a.textContent = word;
+      const b = document.createElement('span');
+      b.className = 'nav-word__row nav-word__row--alt';
+      b.setAttribute('aria-hidden', 'true');
+      b.textContent = '→ ' + word;
+      inner.append(a, b);
+      wrap.appendChild(inner);
+      link.appendChild(wrap);
+    });
+    link.dataset.maskDone = '1';
+  });
+
+  // Compact-on-scroll. Threshold ~80px feels right for a 66px-padded header.
+  const THRESHOLD = 80;
+  let isCompact = false;
+  const setCompact = (next) => {
+    if (next === isCompact) return;
+    isCompact = next;
+    nav.dataset.scrolled = next ? 'true' : 'false';
+  };
+
+  if (lenis) {
+    lenis.on('scroll', ({ scroll }) => setCompact(scroll > THRESHOLD));
+  } else {
+    const onScroll = () => setCompact(window.scrollY > THRESHOLD);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+})();
+
 // Mark ready so CSS pre-hide for splits releases.
 requestAnimationFrame(() => document.documentElement.setAttribute('data-ready', '1'));
 

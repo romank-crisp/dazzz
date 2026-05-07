@@ -337,6 +337,9 @@ html:not([data-ready]) .split-char { opacity: 0; }
    10, 12. Vertical alignment: items start at the same baseline.
    ─────────────────────────────────────────────────────────────── */
 .site-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
   width: 100%;
   background: var(--cream);
   display: grid;
@@ -347,6 +350,18 @@ html:not([data-ready]) .split-char { opacity: 0; }
   padding-bottom: clamp(40px, 4.57vw, 66px);
   padding-left:   clamp(20px, 2.85vw, 41px);
   padding-right:  clamp(20px, 2.85vw, 41px);
+  transition:
+    padding-top    0.55s var(--ease-out),
+    padding-bottom 0.55s var(--ease-out);
+}
+
+/* Compact state — set by JS once scrollY > threshold.
+   Descriptor + link groups + lang fade out, wordmark halves in size.
+   Only the "2x small" logo remains anchored to its grid cell. */
+.site-nav[data-scrolled="true"] {
+  padding-top:    clamp(14px, 1.6vw, 22px);
+  padding-bottom: clamp(14px, 1.6vw, 22px);
+  box-shadow: 0 1px 0 0 rgb(15 14 12 / 0.06);
 }
 
 /* ─── Descriptor — "Creative Studio / & Event Buro" ────────── */
@@ -374,6 +389,11 @@ html:not([data-ready]) .split-char { opacity: 0; }
   aspect-ratio: 138.938 / 96.9705;
   display: block;
   user-select: none;
+  transition: width 0.6s var(--ease-out);
+  will-change: width;
+}
+.site-nav[data-scrolled="true"] .site-nav__wordmark {
+  width: clamp(40px, 4.83vw, 70px);   /* exactly half — the "2x small" mark */
 }
 
 /* ─── Nav link groups (About/Work, Clients/Awards, Contact) ─── */
@@ -402,10 +422,73 @@ html:not([data-ready]) .split-char { opacity: 0; }
   line-height: 1;
   color: var(--ink);
   text-decoration: none;
-  transition: color var(--dur-hover) var(--ease-out);
   white-space: nowrap;
 }
-.site-nav__link:hover { color: var(--ink-55); }
+
+/* ─── Word-mask hover (Awwwards-style) ───────────────────────────
+   Each word is a clipped box containing two stacked rows: original
+   (sans, ink) above, alt (serif italic, oxblood accent) below.
+   On hover the inner block translates up by exactly one row, with
+   per-word stagger (--i set on the wrapper from JS).
+   Built on the existing <a class="site-nav__link"> markup —
+   main.js wraps the text once on init. */
+.nav-word {
+  display: inline-block;
+  overflow: hidden;
+  line-height: 1.15;            /* host descenders ("g", "p") */
+  height: 1.15em;               /* clip to a single row — the mask */
+  padding: 0 0.06em;            /* slack for italic letter slant */
+  margin:  0 -0.06em;
+  vertical-align: bottom;
+}
+.nav-word__inner {
+  display: block;
+  will-change: transform;
+  transform: translateY(0);
+  transition: transform 0.6s cubic-bezier(0.7, 0, 0.16, 1);
+  transition-delay: calc(var(--i, 0) * 40ms);
+}
+.nav-word__row {
+  display: block;
+  height: 1.15em;
+  line-height: 1.15;
+}
+.nav-word__row--alt {
+  /* Identical to resting row — just different vertical position */
+}
+.site-nav__link:hover .nav-word__inner,
+.site-nav__link:focus-visible .nav-word__inner {
+  transform: translateY(-50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-word__inner { transition: none; }
+  .site-nav__link:hover  .nav-word__inner,
+  .site-nav__link:focus-visible .nav-word__inner { transform: none; }
+  .site-nav__link:hover .nav-word__row--alt { color: inherit; }
+}
+
+/* Compact state: fade descriptor + groups + lang. */
+.site-nav__descriptor,
+.site-nav__group,
+.site-nav__lang {
+  transition:
+    opacity   0.45s var(--ease-out),
+    transform 0.45s var(--ease-out),
+    visibility 0s   linear 0s;
+}
+.site-nav[data-scrolled="true"] .site-nav__descriptor,
+.site-nav[data-scrolled="true"] .site-nav__group,
+.site-nav[data-scrolled="true"] .site-nav__lang {
+  opacity: 0;
+  transform: translateY(-8px);
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity   0.4s var(--ease-out),
+    transform 0.4s var(--ease-out),
+    visibility 0s  linear 0.4s;
+}
 
 /* ─── Language switcher ─────────────────────────────────────── */
 .site-nav__lang {
