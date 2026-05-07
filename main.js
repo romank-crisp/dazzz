@@ -565,7 +565,18 @@ const ctx  = (window.gsap && page) ? gsap.context(() => {
       const b = document.createElement('span');
       b.className = 'nav-word__row nav-word__row--alt';
       b.setAttribute('aria-hidden', 'true');
-      b.textContent = '→ ' + word;
+      const icon = document.createElement('span');
+      icon.className = 'nav-word__icon';
+      if (window.lucide?.ArrowRight) {
+        const svg = window.lucide.ArrowRight.toSvg();
+        icon.innerHTML = svg;
+      } else {
+        icon.textContent = '→';
+      }
+      b.appendChild(icon);
+      const txt = document.createElement('span');
+      txt.textContent = word;
+      b.appendChild(txt);
       inner.append(a, b);
       wrap.appendChild(inner);
       link.appendChild(wrap);

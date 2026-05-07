@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hero — Dazzz Universe</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg:     #050505;
+      --cream:  #EFEAE2;
+      --ff-serif: "Instrument Serif", "Times New Roman", serif;
+      --ff-sans:  "Instrument Sans", -apple-system, "Helvetica Neue", Arial, sans-serif;
+      --fs-mega: clamp(44px, 6.2vw, 96px);
+      --fs-link: clamp(14px, 1.4vw, 20px);
+      --gutter:  clamp(20px, 2.85vw, 41px);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      background: var(--bg);
+      color: var(--cream);
+      font-family: var(--ff-sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Nav ─────────────────────────────────────────────────────────────── */
+    .nav {
+      position: fixed;
+      inset: 0 0 auto;
+      z-index: 100;
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      align-items: center;
+      padding: clamp(32px, 3.8vw, 56px) var(--gutter);
+      background: transparent;
+    }
+
+    .nav__descriptor {
+      grid-column: 1 / span 2;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(10px, 1vw, 14px);
+      font-size: var(--fs-link);
+      line-height: 1;
+      color: var(--cream);
+    }
+    .nav__logo     { grid-column: 3 / span 2; display: flex; align-items: center; }
+    .nav__wordmark {
+      width: clamp(64px, 8.5vw, 120px);
+      height: auto;
+      display: block;
+      filter: invert(1); /* black SVG → white on dark bg */
+    }
+
+    .nav__group {
+      display: flex;
+      flex-direction: column;
+      gap: clamp(10px, 1vw, 14px);
+    }
+    .nav__group--about   { grid-column:  6 / span 2; }
+    .nav__group--clients { grid-column:  8 / span 2; }
+    .nav__group--contact { grid-column: 10 / span 2; }
+    .nav__group--contact::after {
+      content: '';
+      display: block;
+      height: clamp(12px, 1.2vw, 17px);
+    }
+    .nav__lang {
+      grid-column: 12 / span 1;
+      justify-self: end;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(10px, 1vw, 14px);
+      align-items: flex-end;
+    }
+    .nav__link {
+      font-size: var(--fs-link);
+      font-weight: 400;
+      line-height: 1;
+      color: var(--cream);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .nav__link--muted { opacity: 0.3; }
+
+    /* ── Hero ─────────────────────────────────────────────────────────────── */
+    .hero {
+      position: relative;
+      width: 100%;
+      height: 100svh;
+      min-height: 600px;
+      background: var(--bg);
+      overflow: hidden;
+    }
+
+    /* Stack — flex-centering so all absolute cards share the same static origin */
+    .hero__stack {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+    }
+
+    /* Each photo card — width/height fixed; GSAP controls everything else */
+    .hero__card {
+      position: absolute;
+      width:  320px;
+      height: 440px;
+      border-radius: 32px;
+      overflow: hidden;
+      box-shadow: 0 40px 120px rgba(0, 0, 0, 0.50),
+                  0  8px  28px rgba(0, 0, 0, 0.28);
+      will-change: transform, opacity;
+    }
+    .hero__card img,
+    .hero__card video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* Overlay — appears during expansion */
+    .hero__overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 8;
+      pointer-events: none;
+      opacity: 0;
+    }
+    .hero__overlay-flat {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.26);
+    }
+    .hero__overlay-gradient {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        transparent         18%,
+        rgba(0,0,0,0.06)    55%,
+        rgba(0,0,0,0.80)   100%
+      );
+    }
+
+    /* Typography — hidden until expansion triggers it */
+    .hero__text {
+      position: absolute;
+      inset: auto var(--gutter) clamp(48px, 5.2vw, 76px);
+      z-index: 12;
+      opacity: 0;  /* shown by JS at the right moment */
+    }
+
+    .hero__title-row {
+      display: flex;
+      align-items: center;
+      gap: clamp(16px, 2vw, 28px);
+    }
+    .hero__title-row .t-mega {
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+    .hero__title-rule {
+      flex: 1 1 0;
+      min-width: 20px;
+      height: 0;
+      border-top: 1px solid rgba(239, 234, 226, 0.45);
+    }
+
+    .t-mega {
+      font-family: var(--ff-serif);
+      font-size: var(--fs-mega);
+      font-weight: 400;
+      line-height: 1.03;
+      letter-spacing: -0.03em;
+      text-transform: uppercase;
+      color: var(--cream);
+      margin: 0;
+    }
+    .t-mega em { font-style: italic; }
+
+    /* Film grain */
+    .hero__grain {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      pointer-events: none;
+      opacity: 0.08;
+      mix-blend-mode: soft-light;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+      background-size: 200px;
+    }
+
+    /* word-split spans */
+    .sw { display: inline-block; will-change: transform, opacity; }
+
+    @media (max-width: 860px) {
+      .nav__group, .nav__lang { display: none; }
+      .nav { display: flex; justify-content: space-between; }
+      .hero__title-row .t-mega { white-space: normal; }
+      .hero__title-rule { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Nav ──────────────────────────────────────────────────────────── -->
+  <header class="nav">
+    <div class="nav__descriptor">
+      <span>Creative Studio</span>
+      <span>&amp; Event Buro</span>
+    </div>
+    <a class="nav__logo" href="/" aria-label="DAZZZ">
+      <img class="nav__wordmark"
+           src="assets/dazzz-wordmark.svg?v=20260507-1"
+           alt="DAZZZ" width="139" height="97">
+    </a>
+    <div class="nav__group nav__group--about">
+      <a class="nav__link" href="#">About</a>
+      <a class="nav__link" href="#">Work</a>
+    </div>
+    <div class="nav__group nav__group--clients">
+      <a class="nav__link" href="#">Clients</a>
+      <a class="nav__link" href="#">Awards &amp; Press</a>
+    </div>
+    <div class="nav__group nav__group--contact">
+      <a class="nav__link" href="#">Contact us</a>
+    </div>
+    <div class="nav__lang">
+      <a class="nav__link" href="#" hreflang="en" aria-current="true">English</a>
+      <a class="nav__link nav__link--muted" href="#" hreflang="de">German</a>
+    </div>
+  </header>
+
+  <!-- ── Hero ─────────────────────────────────────────────────────────── -->
+  <main>
+    <section class="hero">
+
+      <!-- Card stack — JS injects cards here -->
+      <div class="hero__stack" id="heroStack"></div>
+
+      <!-- Overlay — fades in during expansion -->
+      <div class="hero__overlay" id="heroOverlay">
+        <div class="hero__overlay-flat"></div>
+        <div class="hero__overlay-gradient"></div>
+      </div>
+
+      <!-- Title — hidden until expansion, then word-by-word -->
+      <div class="hero__text" id="heroText">
+        <div class="hero__title-row">
+          <h1 class="t-mega" id="t1">En Coulisse</h1>
+          <span class="hero__title-rule" aria-hidden="true"></span>
+          <p class="t-mega" id="t2"><em>Immersive</em></p>
+        </div>
+        <p class="t-mega" id="t3">unique experience and concept</p>
+      </div>
+
+      <!-- Film grain -->
+      <div class="hero__grain" aria-hidden="true"></div>
+
+    </section>
+  </main>
+
+  <!-- GSAP — sync so first-paint state is correct -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script>
+
+    /* ── Word splitter ────────────────────────────────────────────────────── */
+    function splitWords(el) {
+      const out = [];
+      const walk = node => [...node.childNodes].forEach(child => {
+        if (child.nodeType === Node.TEXT_NODE) {
+          const frag = document.createDocumentFragment();
+          child.nodeValue.split(/(\s+)/).forEach(p => {
+            if (!p) return;
+            if (/^\s+$/.test(p)) { frag.appendChild(document.createTextNode(p)); return; }
+            const s = Object.assign(document.createElement('span'), { className: 'sw', textContent: p });
+            frag.appendChild(s);
+            out.push(s);
+          });
+          node.replaceChild(frag, child);
+        } else if (child.nodeType === Node.ELEMENT_NODE) {
+          walk(child);
+        }
+      });
+      walk(el);
+      return out;
+    }
+
+    /* ── Image / video list ───────────────────────────────────────────────── */
+    // All 12 thumbs for the collage; the final slot is a video that expands.
+    const IMGS = [
+      'assets/img/cases/vca-bolshoi/thumb/vca-1.png',
+      'assets/img/cases/vca-bolshoi/thumb/vca-2.png',
+      'assets/img/cases/vca-bolshoi/thumb/vca-3.png',
+      'assets/img/cases/vca-bolshoi/thumb/vca-4.png',
+      'assets/img/cases/vca-bolshoi/thumb/vca-5.png',
+      'assets/img/cases/vca-bolshoi/thumb/vca-6.png',
+      'assets/img/cases/vca-bolshoi/thumb/vca-7.png',
+      'assets/img/cases/vca-bolshoi/thumb/vca-8.png',
+      'assets/img/cases/vca-bolshoi/thumb/vca-9.png',
+      'assets/img/cases/vca-bolshoi/thumb/vca-10.png',
+      'assets/img/cases/vca-bolshoi/thumb/vca-11.png',
+      'assets/img/cases/vca-bolshoi/thumb/vca-12.png',
+    ];
+    const VIDEO_SRC = 'assets/video/vca-bolshoi-hero.mp4';
+
+    /* ── Build card elements ──────────────────────────────────────────────── */
+    const stackEl = document.getElementById('heroStack');
+
+    // Image cards
+    IMGS.forEach((src, i) => {
+      const card = document.createElement('div');
+      card.className = 'hero__card';
+      card.style.zIndex = i + 1;
+      const img = Object.assign(document.createElement('img'), { src, alt: '', draggable: false });
+      card.appendChild(img);
+      stackEl.appendChild(card);
+    });
+
+    // Video card — last, highest z-index, expands to fill
+    const videoCard = document.createElement('div');
+    videoCard.className = 'hero__card';
+    videoCard.style.zIndex = IMGS.length + 1;
+    const vid = document.createElement('video');
+    vid.src = VIDEO_SRC;
+    vid.autoplay = true;
+    vid.muted = true;
+    vid.loop = true;
+    vid.playsInline = true;
+    vid.setAttribute('playsinline', '');
+    videoCard.appendChild(vid);
+    stackEl.appendChild(videoCard);
+
+    const cards     = gsap.utils.toArray('.hero__card');
+    const lastCard  = cards[cards.length - 1];
+
+    /* ── Seed: all cards are tiny, invisible, randomly tilted ───────────── */
+    gsap.set(cards, {
+      scale:           0.04,
+      opacity:         0,
+      rotation:        () => gsap.utils.random(-12, 12),
+      x:               () => gsap.utils.random(-40, 40),
+      y:               () => gsap.utils.random(-30, 30),
+      transformOrigin: 'center center',
+      force3D:         true,
+    });
+
+    /* ── Title: split words, hide until expansion ────────────────────────── */
+    const words = ['t1', 't2', 't3'].flatMap(id => splitWords(document.getElementById(id)));
+    gsap.set(words,           { y: 44, opacity: 0, rotation: 3, force3D: true });
+    // heroText opacity is already 0 in CSS — keeps the title-rule hidden too
+
+    /* ── Scale to exactly fill the viewport ─────────────────────────────── */
+    // The card lives at the flex-center origin. CSS transform scale() expands
+    // outward from transformOrigin: center center, which is the viewport center.
+    // overflow: hidden on .hero clips any bleed. No width/height animation needed.
+    const CARD_W    = 320;
+    const CARD_H    = 440;
+    const fillScale = Math.max(
+      window.innerWidth  / CARD_W,
+      window.innerHeight / CARD_H
+    ) * 1.02;   // 2 % overshoot → zero hairline gap at any aspect ratio
+
+    /* ── Master timeline ──────────────────────────────────────────────────── */
+    const tl = gsap.timeline({
+      delay:    0.35,
+      defaults: { ease: 'power4.out', force3D: true },
+    });
+
+    /* 1 — Cards: appear one by one, each settling with organic micro-scatter */
+    cards.forEach((card, i) => {
+      tl.to(card, {
+        scale:    1,
+        opacity:  1,
+        rotation: gsap.utils.random(-5, 5),
+        x:        gsap.utils.random(-15, 15),
+        y:        gsap.utils.random(-15, 15),
+        duration: 1.1,
+      }, i * 0.13);
+    });
+
+    /* 2 — Last card grows to fill the viewport
+          Starts 0.1 s before the last card animation ends — they overlap
+          slightly so the expansion feels like a continuation, not a pause.  */
+    tl.to(lastCard, {
+      scale:        fillScale,
+      x:            0,
+      y:            0,
+      rotation:     0,
+      borderRadius: 0,
+      duration:     1.8,
+      ease:         'expo.inOut',
+    }, '>-0.1');
+
+    /* 3 — Atmospheric overlay: fades in 0.6 s into the expansion
+          (1.2 s duration, timed to end when the expansion ends)           */
+    tl.to('#heroOverlay', {
+      opacity:  1,
+      duration: 1.2,
+    }, '-=1.2');
+
+    /* 4 — Title: reveal container then stagger words upward
+          Starts 1 s before the current timeline end (0.8 s into expansion) */
+    tl.set('#heroText', { opacity: 1 }, '-=1.0');
+    tl.to(words, {
+      y:        0,
+      opacity:  1,
+      rotation: 0,
+      duration: 1.0,
+      ease:     'power3.out',
+      stagger:  { each: 0.05, from: 'start' },
+    }, '<');
+
+  </script>
+</body>
+</html>
