@@ -1,0 +1,7 @@
+.git
+.gitignore
+.gitkeep
+.claude
+node_modules
+*.md
+package*.json
